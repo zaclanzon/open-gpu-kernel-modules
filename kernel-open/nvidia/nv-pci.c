@@ -2116,7 +2116,13 @@ NvBool nv_pci_is_valid_topology_for_direct_pci(
         case NV_REG_GRDMA_PCI_TOPO_CHECK_OVERRIDE_DENY_ACCESS:
             return NV_FALSE;
         default:
-           return (pdev0->dev.iommu_group == pdev1->dev.iommu_group);
+            if (pdev0->dev.iommu_group == pdev1->dev.iommu_group)
+                return NV_TRUE;
+
+            if (pdev1->dev.iommu_group == NULL)
+                return nv_pci_has_common_pci_switch(nv, peer);
+
+            return NV_FALSE;
     }
 }
 

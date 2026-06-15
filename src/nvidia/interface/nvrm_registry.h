@@ -2094,6 +2094,17 @@
 #define NV_REG_STR_BUG_3007008_EMULATE_VF_MMU_TLB_INVALIDATE_DISABLE    0x00000000
 #define NV_REG_STR_BUG_3007008_EMULATE_VF_MMU_TLB_INVALIDATE_DEFAULT    NV_REG_STR_BUG_3007008_EMULATE_VF_MMU_TLB_INVALIDATE_ENABLE
 
+//
+// TYPE Dword
+// Determines whether or not to enable N:1 vGPU with 64K pagesize
+// Encoding : 0 - Do not enable N:1 vGPU (Default)
+//          : 1 - Enable N:1 vGPU
+//
+#define NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE                "RmEnableVgpu64kPageSize"
+#define NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_NO             0x00000000
+#define NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_YES            0x00000001
+#define NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_DEFAULT        NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_NO
+
 #define NV_REG_STR_RM_POWER_FEATURES                        "RMPowerFeature"
 
 // Type DWORD

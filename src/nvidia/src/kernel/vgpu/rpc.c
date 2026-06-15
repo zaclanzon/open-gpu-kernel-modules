@@ -5407,7 +5407,6 @@ static NV_STATUS rpcRmApiControl_wrapper(OBJGPU *pGpu, OBJRPC *pRpc, NvHandle hC
     {
         return NV_ERR_NOT_SUPPORTED;
     }
-
     status = rpcWriteCommonHeader(pGpu,
                                   pRpc,
                                   NV_VGPU_MSG_FUNCTION_RM_API_CONTROL,
@@ -5435,7 +5434,6 @@ static NV_STATUS rpcRmApiControl_wrapper(OBJGPU *pGpu, OBJRPC *pRpc, NvHandle hC
         return status;
     }
     portMemCopy(pParams, paramSize, dest, paramSize);
-
     return rpc_params->status;
 }
 
@@ -8987,7 +8985,7 @@ NV_STATUS rpcPerfGetLevelInfo_v2B_0D(OBJGPU *pGpu,
     NvU32 i;
 
     if (params->perfGetClkInfoListSize > NV2080_CTRL_PERF_CLK_MAX_DOMAINS_v2B_0D)
-    {   
+    {
         NV_PRINTF(LEVEL_ERROR,
                   "NVRM_RPC: PerfGetLevelInfo : List Size Exceeded for perfGetClkInfoList, currentSize:  %u (maxAllowedSize: %u)\n",
                   params->perfGetClkInfoListSize, NV2080_CTRL_PERF_CLK_MAX_DOMAINS_v2B_0D);
@@ -9003,10 +9001,10 @@ NV_STATUS rpcPerfGetLevelInfo_v2B_0D(OBJGPU *pGpu,
     rpc_buffer_params->hClient                = hClient;
     rpc_buffer_params->hObject                = hObject;
 
-    //Copy values to new RmCtrl Params from Old RmCtrl. 
+    //Copy values to new RmCtrl Params from Old RmCtrl.
     pParams.level                  = params->level;
     pParams.flags                  = params->flags;
-    pParams.perfGetClkInfoListSize = params->perfGetClkInfoListSize;  
+    pParams.perfGetClkInfoListSize = params->perfGetClkInfoListSize;
 
     //Copy List params to RmCtrl Params.
     if (pPerfClkInfos)
@@ -9021,13 +9019,13 @@ NV_STATUS rpcPerfGetLevelInfo_v2B_0D(OBJGPU *pGpu,
             pParams.perfGetClkInfoList[i].maxFreq     = pPerfClkInfos[i].maxFreq;
         }
     }
-    
+
     status = serialize_NV2080_CTRL_PERF_GET_LEVEL_INFO_V2_PARAMS_v2B_0D(&pParams, (NvU8 *)&(rpc_buffer_params->params), 0, NULL);
     if (status != NV_OK)
-        goto exit; 
-    
+        goto exit;
+
     status = _issueRpcAndWait(pGpu, pRpc);
-    
+
     if (status == NV_OK)
     {
         status = deserialize_NV2080_CTRL_PERF_GET_LEVEL_INFO_V2_PARAMS_v2B_0D(&pParams, (NvU8 *)&(rpc_buffer_params->params), 0, NULL);

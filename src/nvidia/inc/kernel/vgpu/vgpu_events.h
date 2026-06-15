@@ -188,6 +188,7 @@ struct _object_vgpu
     NvBool bECCSupported;
     /* Cache ECC status value in the Guest */
     NvBool bECCEnabled;
+    /* Cached CLK_GET_EXTENDED_INFO result (static for vGPU guests) */
     /* RPC fully initialized */
     NvBool bRpcInitialized;
     /* GSP buffers initialized */

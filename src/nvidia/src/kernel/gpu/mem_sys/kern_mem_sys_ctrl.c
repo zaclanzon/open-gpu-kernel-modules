@@ -108,6 +108,11 @@ kmemsysGetFbInfos_VF(OBJGPU *pGpu, KernelMemorySystem *pKernelMemorySystem, RsCl
                 data = NvU64_HI32((NvU64)pVSI->ltcMask);
                 break;
             }
+            case NV2080_CTRL_FB_INFO_INDEX_RAM_TYPE:
+            {
+                data = pVSI->memsysStaticConfig.ramType;
+                break;
+            }
             case NV2080_CTRL_FB_INFO_INDEX_L2CACHE_SIZE:
             {
                 data = pVSI->sizeL2Cache;
