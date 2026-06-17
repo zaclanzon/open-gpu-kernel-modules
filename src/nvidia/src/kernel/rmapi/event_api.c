@@ -179,7 +179,8 @@ eventapiConstruct_IMPL
                 rmStatus = osUserHandleToKernelPtr(pRsClient->hClient,
                                                    pNv0050AllocParams->data,
                                                    &pNv0050AllocParams->data);
-                bUserOsEventHandle = NV_TRUE;
+                if (rmStatus == NV_OK)
+                    bUserOsEventHandle = NV_TRUE;
             }
         }
 

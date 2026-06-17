@@ -178,7 +178,7 @@ void ConnectorImpl::applyRegkeyOverrides(const DP_REGKEY_DATABASE& dpRegkeyDatab
               "All regkeys are invalid because dpRegkeyDatabase is not initialized!");
 
     this->bSkipAssessLinkForEDP = dpRegkeyDatabase.bAssesslinkForEdpSkipped;
-    this->bSkipPanelPowerWrite  = dpRegkeyDatabase.bSkipPanelPowerWrite; 
+    this->bSkipPanelPowerWrite  = dpRegkeyDatabase.bSkipPanelPowerWrite;
 
     //
     // Default bHdcpAuthOnlyOnDemand, bMstRestoreHdcpStateAtAttach are true
@@ -7320,7 +7320,6 @@ void ConnectorImpl::disconnectDeviceList()
         {
             delete ((DeviceImpl*)d)->deviceHDCPDetection;
             ((DeviceImpl*)d)->deviceHDCPDetection = NULL;
-            ((DeviceImpl*)d)->isHDCPCap = False;
         }
     }
 }
@@ -7736,7 +7735,16 @@ void ConnectorImpl::notifyLongPulseInternal(bool statusConnected)
             else
             {
                 dev.peerDevice = DownstreamSink;
-                if (hal->isAtLeastVersion(1, 4) && !bDisableNativeDisplayId2xSupport)
+                bool bIsDpToHdmiDongle = false;
+                if (hal->getLegacyPortCount() != 0)
+                {
+                    LegacyPort * port = hal->getLegacyPort(0);
+                    bIsDpToHdmiDongle = (port->getDownstreamPortType() == HDMI);
+                }
+
+                if (hal->isAtLeastVersion(1, 4) &&
+                    !bIsDpToHdmiDongle &&
+                    !bDisableNativeDisplayId2xSupport)
                 {
                     DisplayId2ReadSST(tmpDid2x, auxBus, timer, main);
                 }
@@ -8834,7 +8842,7 @@ bool ConnectorImpl::updatePsrLinkState(bool bTurnOnLink)
         {
             bSetPanelPower = false;
         }
-        
+
         if (bSetPanelPower)
         {
             hal->setPowerState(PowerStateD0);

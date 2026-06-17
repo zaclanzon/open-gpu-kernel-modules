@@ -29,6 +29,7 @@
 #include "resserv/rs_client.h"
 #include "resserv/rs_server.h"
 
+
 #if !(RS_STANDALONE)
 #include "os/os.h"
 #endif

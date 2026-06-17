@@ -2180,6 +2180,9 @@ done:
     return status;
 }
 
+#if !RS_STANDALONE
+#endif
+
 NV_STATUS
 serverInterMap
 (
@@ -2285,6 +2288,7 @@ serverInterMap
     pMapping->pMemDesc = pParams->pMemDesc;
 
 done:
+
     serverInterMap_Epilogue(pServer, pParams, &releaseFlags);
 
     if (bRestoreCallContext)

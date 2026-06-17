@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 1993-2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: Copyright (c) 1993-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -557,7 +557,6 @@ namespace DisplayPort
                   retriesRemote22BCapsReadMessage(0), retryRemoteBKSVReadMessage(false),
                   retryRemoteBCapsReadMessage(false), retryRemote22BCapsReadMessage(false),
                   bBKSVReadMessagePending(false), bBCapsReadMessagePending(false)
-
             {
                 this->parent = parent;
                 this->messageManager = messageManager;

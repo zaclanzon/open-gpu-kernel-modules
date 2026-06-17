@@ -5911,11 +5911,14 @@ kmigmgrConfigureGPUInstance_IMPL
 
     //
     // Return an error if there are any channels on any engines targeted by this
-    // request
+    // request. Skip this check for GSP fast unload codepath, since we may have channels on engines
+    // but with no active workloads.
     //
-    NV_CHECK_OR_RETURN(LEVEL_SILENT,
-                       !kfifoEngineListHasChannel(pGpu, pKernelFifo, checkGrs, checkGrCount),
-                       NV_ERR_STATE_IN_USE);
+    {
+        NV_CHECK_OR_RETURN(LEVEL_SILENT,
+                        !kfifoEngineListHasChannel(pGpu, pKernelFifo, checkGrs, checkGrCount),
+                        NV_ERR_STATE_IN_USE);
+    }
 
     if (!bAssigning)
     {

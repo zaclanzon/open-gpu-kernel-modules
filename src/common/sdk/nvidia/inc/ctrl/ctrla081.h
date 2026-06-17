@@ -46,7 +46,7 @@
 #define NVA081_MAX_VGPU_TYPES_PER_PGPU       0x80
 #define NVA081_MAX_VGPU_PER_PGPU             48
 #define NVA081_MAX_VGPU_PER_PGPU_NON_MIG     32
-#define NVA081_MAX_VGPU_PER_GI               12
+#define NVA081_MAX_VGPU_PER_GI               18
 #define NVA081_VM_UUID_SIZE                  16
 #define NVA081_VGPU_STRING_BUFFER_SIZE       64
 #define NVA081_VGPU_SIGNATURE_SIZE           128

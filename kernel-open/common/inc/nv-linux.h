@@ -1063,6 +1063,7 @@ typedef struct nv_dma_map_s {
     NvU64 page_count;
     NvBool contiguous;
     NvU32 cache_type;
+    NvBool bReadOnlyDeviceMap;
     struct sg_table *import_sgt;
 
     union

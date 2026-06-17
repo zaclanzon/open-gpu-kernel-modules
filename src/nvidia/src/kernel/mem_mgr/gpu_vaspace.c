@@ -4298,7 +4298,8 @@ gvaspaceCopyServerReservedPdes_IMPL
                 aperture = ADDR_SYSMEM;
                 break;
             default:
-                NV_ASSERT_OR_GOTO(0, done);
+                NV_ASSERT(0);
+                goto done;
         }
 
         status = memdescCreate(&pMemDescNew, pGpu,

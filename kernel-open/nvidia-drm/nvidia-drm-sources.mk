@@ -109,3 +109,4 @@ NV_CONFTEST_TYPE_COMPILE_TESTS += drm_output_poll_changed
 NV_CONFTEST_TYPE_COMPILE_TESTS += drm_driver_has_date
 NV_CONFTEST_TYPE_COMPILE_TESTS += drm_connector_helper_funcs_mode_valid_has_const_mode_arg
 NV_CONFTEST_TYPE_COMPILE_TESTS += drm_fb_create_takes_format_info
+NV_CONFTEST_TYPE_COMPILE_TESTS += drm_atomic_commit_struct_present

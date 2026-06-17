@@ -447,6 +447,7 @@ gisubscriptionCtrlCmdExecPartitionsCreate_IMPL
 
         // Only continue if execution partition creation succeeded in the host
         NV_ASSERT_OK_OR_RETURN(status);
+
     }
 
     if (!IS_GSP_CLIENT(pGpu))

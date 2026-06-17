@@ -468,6 +468,7 @@ nv_procfs_read_registry(
             nvl->registry_keys : nv_registry_keys);
 
     seq_printf(s, "Binary: \"%s\"\n", registry_keys);
+
     return 0;
 }
 

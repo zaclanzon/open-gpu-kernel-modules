@@ -23,6 +23,7 @@
 
 
 
+
 #include <nv_ref.h>
 #include <nv.h>
 #include <nv_escape.h>
@@ -643,7 +644,7 @@ done:
     }
     else
     {
-        NV_PRINTF(LEVEL_ERROR, "failed to allocate OS event: 0x%08x\n", status);
+        NV_PRINTF(LEVEL_INFO, "failed to allocate OS event: 0x%08x\n", status);
         status = NV_ERR_INSUFFICIENT_RESOURCES;
         portMemFree(new_event);
     }
@@ -1553,7 +1554,7 @@ static NV_STATUS RmP2PDmaMapPages(
 
     if (pageSize == os_page_size)
     {
-        status = nv_dma_map_alloc(peer, pageCount, pDmaAddresses, NV_FALSE, ppPriv);
+        status = nv_dma_map_alloc(peer, pageCount, pDmaAddresses, NV_FALSE, NV_FALSE, ppPriv);
 
         goto put_pgmap;
     }
@@ -1588,7 +1589,7 @@ static NV_STATUS RmP2PDmaMapPages(
         }
     }
 
-    status = nv_dma_map_alloc(peer, osPageCount, pOsDmaAddresses, NV_FALSE, ppPriv);
+    status = nv_dma_map_alloc(peer, osPageCount, pOsDmaAddresses, NV_FALSE, NV_FALSE, ppPriv);
     if (status != NV_OK)
     {
         goto failed;

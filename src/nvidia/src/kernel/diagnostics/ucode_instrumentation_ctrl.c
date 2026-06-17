@@ -36,6 +36,7 @@
 #include "core/system.h"
 #include "kernel/vgpu/rpc.h"
 #include "diagnostics/instrumentation_manager.h"
+#include "virtualization/common_vgpu_mgr.h"
 
 typedef struct {
     NvU8 taskRmCoverage[BULLSEYE_TASK_RM_COVERAGE_SIZE];
@@ -150,6 +151,7 @@ diagapiCtrlCmdUcodeInstrumentationGetState_IMPL
 {
     NV_STATUS status = NV_OK;
     OBJGPU *pGpu = GPU_RES_GET_GPU(pDiagApi);
+
     if (IS_GSP_CLIENT(pGpu))
     {
         CALL_CONTEXT *pCallContext  = resservGetTlsCallContext();
@@ -178,6 +180,7 @@ diagapiCtrlCmdUcodeInstrumentationSetState_IMPL
 {
     NV_STATUS status = NV_OK;
     OBJGPU *pGpu = GPU_RES_GET_GPU(pDiagApi);
+
     if (IS_GSP_CLIENT(pGpu))
     {
         CALL_CONTEXT *pCallContext  = resservGetTlsCallContext();
@@ -206,6 +209,7 @@ diagapiCtrlCmdUcodeInstrumentationGetData_IMPL
 {
     NV_STATUS status = NV_OK;
     OBJGPU *pGpu = GPU_RES_GET_GPU(pDiagApi);
+
     if (IS_GSP_CLIENT(pGpu))
     {
         CALL_CONTEXT *pCallContext  = resservGetTlsCallContext();

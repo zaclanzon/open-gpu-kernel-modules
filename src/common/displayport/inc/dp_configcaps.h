@@ -601,8 +601,8 @@ namespace DisplayPort
         NvU32     overrideDpcdMaxLinkRate;
         NvU32     overrideDpcdRev;
         NvU32     overrideDpcdMaxLaneCount;
-
         NvU32     gpuDPSupportedVersions;
+        bool      bSkipPanelD3InPsr;
 
         struct _LegacyPort: public LegacyPort
         {
@@ -790,7 +790,7 @@ namespace DisplayPort
         : bus(bus), timer(timer), bGrantsPostLtRequest(false), uprequestEnable(false),
           upstreamIsSource(false), bMultistream(false), bGpuFECSupported(false),
           bBypassILREdpRevCheck(false), overrideDpcdMaxLinkRate(0),
-          overrideDpcdRev(0), gpuDPSupportedVersions(0)
+          overrideDpcdRev(0), gpuDPSupportedVersions(0), bSkipPanelD3InPsr(false)
         {
             // start with default caps.
             dpcdOffline = true;

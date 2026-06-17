@@ -21,12 +21,32 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+
 #include "resserv/resserv.h"
 #include "rmapi/rmapi.h"
 
 #include "ctrl/ctrlxxxx.h"
 
 #include "g_finn_rm_api.h"
+
+static NvU32
+_rmapiFinnGetInterfaceId
+(
+    NvU32 cmd
+)
+{
+    return (DRF_VAL(XXXX, _CTRL_CMD, _CLASS, cmd) << 8) |
+            DRF_VAL(XXXX, _CTRL_CMD, _CATEGORY, cmd);
+}
+
+static NvU32
+_rmapiFinnGetMessageId
+(
+    NvU32 cmd
+)
+{
+    return DRF_VAL(XXXX, _CTRL_CMD, _INDEX, cmd);
+}
 
 /**
  * Serialize parameters for servicing command
@@ -50,9 +70,8 @@ serverSerializeCtrlDown
     {
         NV_STATUS status;
         NvU8 *pSerBuffer;
-        const NvU32 interface_id = (DRF_VAL(XXXX, _CTRL_CMD, _CLASS, cmd) << 8) |
-                                    DRF_VAL(XXXX, _CTRL_CMD, _CATEGORY, cmd);
-        const NvU32 message_id = DRF_VAL(XXXX, _CTRL_CMD, _INDEX, cmd);
+        const NvU32 interface_id = _rmapiFinnGetInterfaceId(cmd);
+        const NvU32 message_id = _rmapiFinnGetMessageId(cmd);
         NvU32 serializedSize = (NvU32)FinnRmApiGetSerializedSize(interface_id, message_id, *ppParams);
 
         pCallContext->pDeserializedParams = *ppParams;
@@ -130,9 +149,8 @@ serverDeserializeCtrlDown
         NV_STATUS status;
         NvU8 *pSerBuffer;
         void *pDeserParams;
-        const NvU32 interface_id = (DRF_VAL(XXXX, _CTRL_CMD, _CLASS, cmd) << 8) |
-                                    DRF_VAL(XXXX, _CTRL_CMD, _CATEGORY, cmd);
-        const NvU32 message_id = DRF_VAL(XXXX, _CTRL_CMD, _INDEX, cmd);
+        const NvU32 interface_id = _rmapiFinnGetInterfaceId(cmd);
+        const NvU32 message_id = _rmapiFinnGetMessageId(cmd);
         NvU32 unserializedSize = (NvU32)FinnRmApiGetUnserializedSize(interface_id, message_id);
 
         // Report error if FINN can't deserialize but RM is reporting the control as serialized
@@ -217,9 +235,8 @@ serverSerializeCtrlUp
         NV_STATUS status;
         NvU8 *pSerBuffer;
         void *pDeserBuffer;
-        const NvU32 interface_id = (DRF_VAL(XXXX, _CTRL_CMD, _CLASS, cmd) << 8) |
-                                    DRF_VAL(XXXX, _CTRL_CMD, _CATEGORY, cmd);
-        const NvU32 message_id = DRF_VAL(XXXX, _CTRL_CMD, _INDEX, cmd);
+        const NvU32 interface_id = _rmapiFinnGetInterfaceId(cmd);
+        const NvU32 message_id = _rmapiFinnGetMessageId(cmd);
 
         // Should be serialized at this point. Expect that serializedSize is set otherwise something is wrong
         if (pCallContext->serializedSize == 0)
@@ -282,9 +299,8 @@ serverDeserializeCtrlUp
         NV_STATUS status;
         NvU8 *pSerBuffer;
         void *pDeserBuffer;
-        const NvU32 interface_id = (DRF_VAL(XXXX, _CTRL_CMD, _CLASS, cmd) << 8) |
-                                    DRF_VAL(XXXX, _CTRL_CMD, _CATEGORY, cmd);
-        const NvU32 message_id = DRF_VAL(XXXX, _CTRL_CMD, _INDEX, cmd);
+        const NvU32 interface_id = _rmapiFinnGetInterfaceId(cmd);
+        const NvU32 message_id = _rmapiFinnGetMessageId(cmd);
         NvU32 unserializedSize = (NvU32)FinnRmApiGetUnserializedSize(interface_id, message_id);
 
         if (!pCallContext->bLocalSerialization)

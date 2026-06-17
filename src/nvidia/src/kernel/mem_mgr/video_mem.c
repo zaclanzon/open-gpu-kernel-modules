@@ -461,10 +461,19 @@ vidmemCopyConstruct
 )
 {
     Memory            *pMemorySrc   = dynamicCast(pParams->pSrcRef->pResource, Memory);
-    OBJGPU            *pGpu         = pMemorySrc->pGpu;
+    OBJGPU            *pGpu         = pMemorySrc->pMemDesc->pGpu;
     MEMORY_DESCRIPTOR *pMemDesc     = pMemorySrc->pMemDesc;
     NV_STATUS          status       = NV_ERR_INVALID_ARGUMENT;
     KernelBus         *pKernelBus    = GPU_GET_KERNEL_BUS(pGpu);
+    NvBool             bSrcLockAcquired = NV_FALSE;
+
+    if (!rmDeviceGpuLockIsOwner(pGpu->gpuInstance) && !rmGpuLockIsOwner())
+    {
+        NV_ASSERT_OK_OR_RETURN(rmDeviceGpuLocksAcquire(pGpu, GPUS_LOCK_FLAGS_NONE, RM_LOCK_MODULES_MEM));
+
+        bSrcLockAcquired = NV_TRUE;
+    }
+
 
     // No flags specified on the initial static BAR1 mapping 
     status = kbusIncreaseStaticBar1Refcount_HAL(pGpu, pKernelBus,
@@ -500,6 +509,12 @@ vidmemCopyConstruct
         default:
             NV_ASSERT_OR_RETURN(0, NV_ERR_INVALID_ARGUMENT);
             break;
+    }
+
+    if (bSrcLockAcquired)
+    {
+        // UNLOCK: release GPUs lock
+        rmDeviceGpuLocksRelease(pGpu, GPUS_LOCK_FLAGS_NONE, NULL);
     }
 
     return status;
@@ -577,15 +592,7 @@ vidmemConstruct_IMPL
 
     if (RS_IS_COPY_CTOR(pParams))
     {
-        if (!rmDeviceGpuLockIsOwner(pGpu->gpuInstance) && !rmGpuLockIsOwner())
-        {
-            NV_ASSERT_OK_OR_GOTO(rmStatus,
-                                 rmDeviceGpuLocksAcquire(pGpu, GPUS_LOCK_FLAGS_NONE, RM_LOCK_MODULES_MEM),
-                                 done);
-
-            bLockAcquired = NV_TRUE;
-        }
-
+        // No need to lock this GPU
         rmStatus = vidmemCopyConstruct(pVideoMemory, pCallContext, pParams);
         goto done;
     }
