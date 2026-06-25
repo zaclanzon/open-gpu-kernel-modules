@@ -118,6 +118,7 @@ nvencsessionConstruct_IMPL
             pNvencSession->pMemory = NULL;
             return status;
         }
+
     }
     else
     {

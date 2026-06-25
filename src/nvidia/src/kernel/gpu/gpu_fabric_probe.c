@@ -568,12 +568,9 @@ _gpuFabricProbeRbmSleepLinks
     NV_STATUS status = NV_OK;
     NvU32 enabledLinkMask;
     NvU32 linkMask;
-    NvBool bEnableABM = knvlinkGetAbmEnabled(pGpu, pKernelNvlink);
 
-    // Bail if RBM was not requested and ABM is not enabled/advertised
-    if ((DRF_VAL(_GPU, _NVLINK, _BW_MODE, pGpuFabricProbeInfoKernel->bwMode) != GPU_NVLINK_BW_MODE_LINK_COUNT) &&
-        (!bEnableABM ||
-         !(pGpuFabricProbeInfoKernel->probeResponseMsg.probeRsp.fmCaps & NVLINK_INBAND_GPU_PROBE_CAPS_ADAPTIVE_BANDWIDTH_SUPPORT)))
+    // Only put links to sleep if RBM was requested
+    if (DRF_VAL(_GPU, _NVLINK, _BW_MODE, pGpuFabricProbeInfoKernel->bwMode) != GPU_NVLINK_BW_MODE_LINK_COUNT)
     {
         return;
     }
@@ -590,6 +587,49 @@ _gpuFabricProbeRbmSleepLinks
         NV_PRINTF(LEVEL_ERROR, "Error setting links to sleep on linkmask 0x%x\n",
                   linkMask);
     }
+}
+
+NV_STATUS
+gpuFabricProbeOverrideFabricHealthStatus
+(
+    GPU_FABRIC_PROBE_INFO_KERNEL *pGpuFabricProbeInfoKernel,
+    NvU32 fabricHealthStatusMask
+)
+{
+    NV_STATUS status;
+
+    status = _gpuFabricProbeFullSanityCheck(pGpuFabricProbeInfoKernel);
+
+    NV_CHECK_OR_RETURN(LEVEL_SILENT, status == NV_OK, status);
+
+    pGpuFabricProbeInfoKernel->probeResponseMsg.probeRsp.fabricHealthMask = fabricHealthStatusMask;
+
+    return NV_OK;
+}
+
+NV_STATUS
+gpuFabricProbeDegradeCliques
+(
+    OBJGPU *pGpu
+)
+{
+    GPU_FABRIC_PROBE_INFO_KERNEL *pGpuFabricProbeInfoKernel = pGpu->pGpuFabricProbeInfoKernel;
+    NV_STATUS status;
+
+    status = _gpuFabricProbeFullSanityCheck(pGpuFabricProbeInfoKernel);
+
+    NV_CHECK_OR_RETURN(LEVEL_SILENT, status == NV_OK, status);
+
+    if (pGpuFabricProbeInfoKernel->probeResponseMsg.probeRsp.cliqueId !=
+        pGpuFabricProbeInfoKernel->probeResponseMsg.probeRsp.degradedCliqueId)
+    {
+        pGpuFabricProbeInfoKernel->probeResponseMsg.probeRsp.cliqueId =
+            pGpuFabricProbeInfoKernel->probeResponseMsg.probeRsp.degradedCliqueId;
+
+        _gpuFabricProbeSendCliqueIdChangeEvent(pGpu, pGpuFabricProbeInfoKernel->probeResponseMsg.probeRsp.cliqueId);
+    }
+
+    return NV_OK;
 }
 
 NV_STATUS

@@ -27,6 +27,7 @@
  */
 
 #include "gpu/gsp/kernel_gsp_trace_rats.h"
+#include "nvport/nvport.h"
 
 #include "rmapi/client.h"
 #include "rmapi/event.h"
@@ -40,6 +41,8 @@
 #include "vgpu/rpc.h"
 #include "gpu/mem_mgr/mem_mgr.h"
 #include "gpu/timer/objtmr.h"
+
+#define GSP_TRACE_BUFFER_ALLOC_SIZE_MAX (1 * 1024 * 1024)   // 1 MB
 
 static
 NV_STATUS

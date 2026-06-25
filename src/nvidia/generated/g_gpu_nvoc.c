@@ -529,6 +529,17 @@ void __nvoc_init_dataField_OBJGPU(OBJGPU *pThis) {
         pThis->setProperty(pThis, PDB_PROP_GPU_ALLOC_ISO_SYS_MEM_FROM_CARVEOUT, NV_FALSE);
     }
 
+    // NVOC Property Hal field -- PDB_PROP_GPU_WAR_5656465_SUPPORTED
+    if (( ((chipHal_HalVarIdx >> 5) == 2UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x00000060UL) )) /* ChipHal: GB202 | GB203 */ 
+    {
+        pThis->setProperty(pThis, PDB_PROP_GPU_WAR_5656465_SUPPORTED, NV_TRUE);
+    }
+    // default
+    else
+    {
+        pThis->setProperty(pThis, PDB_PROP_GPU_WAR_5656465_SUPPORTED, NV_FALSE);
+    }
+
     pThis->deviceInstance = 32;
 
     // Hal field -- isVirtual

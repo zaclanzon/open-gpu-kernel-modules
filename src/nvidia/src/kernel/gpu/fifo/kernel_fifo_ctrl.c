@@ -1065,10 +1065,10 @@ subdeviceCtrlCmdFifoQueryChannelUniqueId_IMPL
     NV2080_CTRL_FIFO_QUERY_CHANNEL_UNIQUE_ID_PARAMS *pGetChannelUidParams
 )
 {
-    RsClient      *pRsClient      = NULL;
     RsResourceRef *pResourceRef   = NULL;
     KernelChannel *pKernelChannel = NULL;
     NvU32 i;
+    RsClient      *pRsClient      = NULL;
 
     NV_CHECK_OR_RETURN(LEVEL_INFO,
         (pGetChannelUidParams->numChannels > 0 && pGetChannelUidParams->numChannels <= NV2080_CTRL_CMD_FIFO_MAX_CHANNELS_PER_TSG),

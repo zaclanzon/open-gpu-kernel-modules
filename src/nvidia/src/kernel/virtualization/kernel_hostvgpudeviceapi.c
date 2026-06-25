@@ -1012,7 +1012,6 @@ kernelhostvgpudeviceapiCtrlCmdBootloadVgpuTask_IMPL
             goto done;
         }
 
-
         pBootloadParams->initTaskLogBuffOffset  = pParams->initTaskLogBuffOffset +
                                                   pBootloadParams->pluginHeapMemoryPhysAddr;
         pBootloadParams->initTaskLogBuffSize    = pParams->initTaskLogBuffSize;
@@ -1021,6 +1020,9 @@ kernelhostvgpudeviceapiCtrlCmdBootloadVgpuTask_IMPL
         pBootloadParams->vgpuTaskLogBuffSize    = pParams->vgpuTaskLogBuffSize;
         pBootloadParams->kernelLogBuffOffset    = pParams->kernelLogBuffOffset +
                                                   pBootloadParams->pluginHeapMemoryPhysAddr;
+        pBootloadParams->kernelLogBuffSize      = pParams->kernelLogBuffSize;
+        pBootloadParams->initTaskLogBuffSize    = pParams->initTaskLogBuffSize;
+        pBootloadParams->vgpuTaskLogBuffSize    = pParams->vgpuTaskLogBuffSize;
         pBootloadParams->kernelLogBuffSize      = pParams->kernelLogBuffSize;
 
         NV_CHECK_OK_OR_GOTO(status,

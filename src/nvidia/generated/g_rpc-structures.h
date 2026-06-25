@@ -1765,6 +1765,13 @@ typedef struct rpc_nvlink_fatal_error_recovery_v17_00
 
 typedef rpc_nvlink_fatal_error_recovery_v17_00 rpc_nvlink_fatal_error_recovery_v;
 
+typedef struct rpc_nvlink_abm_fabric_health_mask_update_v01_00
+{
+    NvU32      data;
+} rpc_nvlink_abm_fabric_health_mask_update_v01_00;
+
+typedef rpc_nvlink_abm_fabric_health_mask_update_v01_00 rpc_nvlink_abm_fabric_health_mask_update_v;
+
 typedef struct rpc_update_gsp_trace_v01_00
 {
     NvU32      records;
@@ -9570,6 +9577,29 @@ static vmiopd_mdesc_t vmiopd_mdesc_t_rpc_nvlink_fatal_error_recovery_v17_00 = {
 };
 #endif
 
+#ifndef SKIP_PRINT_rpc_nvlink_abm_fabric_health_mask_update_v01_00
+static vmiopd_fdesc_t vmiopd_fdesc_t_rpc_nvlink_abm_fabric_health_mask_update_v01_00[] = {
+    {
+        .vtype                = vtype_NvU32,
+        .offset               = NV_OFFSETOF(rpc_nvlink_abm_fabric_health_mask_update_v01_00, data),
+        #if (defined(DEBUG) || defined(DEVELOP))
+        .name                 = "data"
+        #endif
+    },
+    {
+        .vtype        = vt_end
+    }
+};
+
+static vmiopd_mdesc_t vmiopd_mdesc_t_rpc_nvlink_abm_fabric_health_mask_update_v01_00 = {
+    #if (defined(DEBUG) || defined(DEVELOP))
+    .name = "rpc_nvlink_abm_fabric_health_mask_update",
+    #endif
+    .header_length = sizeof(rpc_nvlink_abm_fabric_health_mask_update_v01_00),
+    .fdesc = vmiopd_fdesc_t_rpc_nvlink_abm_fabric_health_mask_update_v01_00
+};
+#endif
+
 #ifndef SKIP_PRINT_rpc_update_gsp_trace_v01_00
 static vmiopd_fdesc_t vmiopd_fdesc_t_rpc_update_gsp_trace_v01_00[] = {
     {
@@ -11707,6 +11737,13 @@ vmiopd_mdesc_t *rpcdebugNvlinkFatalErrorRecovery_v17_00(void)
 }
 #endif
 
+#ifndef SKIP_PRINT_rpc_nvlink_abm_fabric_health_mask_update_v01_00
+vmiopd_mdesc_t *rpcdebugNvlinkAbmFabricHealthMaskUpdate_v01_00(void)
+{
+    return &vmiopd_mdesc_t_rpc_nvlink_abm_fabric_health_mask_update_v01_00;
+}
+#endif
+
 #ifndef SKIP_PRINT_rpc_update_gsp_trace_v01_00
 vmiopd_mdesc_t *rpcdebugUpdateGspTrace_v01_00(void)
 {
@@ -12217,6 +12254,8 @@ typedef union rpc_generic_union {
     rpc_nvlink_is_gpu_degraded_v nvlink_is_gpu_degraded_v;
     rpc_nvlink_fatal_error_recovery_v17_00 nvlink_fatal_error_recovery_v17_00;
     rpc_nvlink_fatal_error_recovery_v nvlink_fatal_error_recovery_v;
+    rpc_nvlink_abm_fabric_health_mask_update_v01_00 nvlink_abm_fabric_health_mask_update_v01_00;
+    rpc_nvlink_abm_fabric_health_mask_update_v nvlink_abm_fabric_health_mask_update_v;
     rpc_update_gsp_trace_v01_00 update_gsp_trace_v01_00;
     rpc_update_gsp_trace_v update_gsp_trace_v;
     rpc_gsp_post_nocat_record_v01_00 gsp_post_nocat_record_v01_00;

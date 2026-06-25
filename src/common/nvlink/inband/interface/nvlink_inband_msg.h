@@ -87,6 +87,8 @@ typedef struct
 #define NVLINK_INBAND_GPU_PROBE_CAPS_HEALTH_SUMMARY NVBIT(6)
 #define NVLINK_INBAND_GPU_PROBE_CAPS_GPU_PROBE_REQUEST_ACTION NVBIT(7)
 #define NVLINK_INBAND_GPU_PROBE_CAPS_MC_RETRY      NVBIT(8)
+/* Bits 9-12 reserved */
+#define NVLINK_INBAND_GPU_PROBE_CAPS_ADAPTIVE_BANDWIDTH_AND_LINK_RETRAIN_FIX NVBIT(13)
 
 /* Add more caps as need in the future */
 
@@ -186,7 +188,8 @@ typedef struct
     NvU32  gpaAddressEGMHi;       /* GPA Address for EGM. Don't use if EGM support is not present in GFM */
     NvU8   maxRbmLinks;           /* Max RBM mode supported */
     NvU32  remapTableIdx;         /* remap table index for the GPU */
-    NvU8   reserved[11];          /* For future use. Must be initialized to zero */
+    NvU16  degradedCliqueId;      /* Unique Clique Id used for degradation */
+    NvU8   reserved[9];          /* For future use. Must be initialized to zero */
 } nvlink_inband_gpu_probe_rsp_t;
 
 typedef struct

@@ -610,7 +610,7 @@ nv_dma_buf_get_phys_addresses (
     nvidia_stack_t *sp = NULL;
     NvBool api_lock_taken = NV_FALSE;
     NvBool gpu_lock_taken = NV_FALSE;
-    NvU32 i;
+    NvU32 i = 0;
     int rc = 0;
 
     if (!nv_inc_and_check_one_phys_refcount(priv, start_index, handle_count))

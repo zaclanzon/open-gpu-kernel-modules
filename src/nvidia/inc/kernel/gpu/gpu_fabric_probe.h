@@ -62,6 +62,8 @@ NV_STATUS gpuFabricProbeGetEgmGpaAddress(GPU_FABRIC_PROBE_INFO_KERNEL *pInfo, Nv
 NV_STATUS gpuFabricProbeGetNumProbeReqs(GPU_FABRIC_PROBE_INFO_KERNEL *pInfo, NvU64 *numProbes);
 NV_STATUS gpuFabricProbeGetFabricCliqueId(GPU_FABRIC_PROBE_INFO_KERNEL *pInfo, NvU32 *pFabricCliqueId);
 NV_STATUS gpuFabricProbeGetFabricHealthStatus(GPU_FABRIC_PROBE_INFO_KERNEL *pInfo, NvU32 *pFabricHealthStatusMask);
+NV_STATUS gpuFabricProbeOverrideFabricHealthStatus(GPU_FABRIC_PROBE_INFO_KERNEL *pInfo, NvU32 fabricHealthStatusMask);
+NV_STATUS gpuFabricProbeDegradeCliques(OBJGPU *pGpu);
 NV_STATUS gpuFabricProbeGetRemapTableIndex(GPU_FABRIC_PROBE_INFO_KERNEL *pInfo, NvU32 *pRemapTableIdx);
 
 NvBool gpuFabricProbeIsReceived(GPU_FABRIC_PROBE_INFO_KERNEL *pGpuFabricProbeInfoKernel);

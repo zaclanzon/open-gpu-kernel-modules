@@ -4904,4 +4904,3 @@ NvBool gpumgrIsDeviceMsixAllowed
 
     return gpuIsMsixAllowed_TU102(bar0BaseAddr);
 }
-

@@ -32,6 +32,8 @@
 #include "gpu/gpu_fabric_probe.h"
 #include "rmapi/rs_utils.h"
 
+#define NVLINK_FABRIC_HEALTH_MASK_TIMER_DELAY_NS    60000000000ULL
+
 static void _knvlinkP2PIdleCallback(OBJGPU *pGpu, void *pArgs);
 void knvlinkABM_WORKITEM(OBJGPU *pGpu, void *pArgs);
 
@@ -526,6 +528,139 @@ knvlinkABMLinkMaskUpdate_GB100
 
     // Launch repeated 1Hz workitem to await drainP2P completion and apply link mask
     (void)osSchedule1HzCallback(pGpu, knvlinkABM_WORKITEM, NULL, NV_OS_1HZ_REPEAT);
+
+    return NV_OK;
+}
+
+static NvBool
+_knvlinkIsGfmLinkMaskActive
+(
+    OBJGPU *pGpu
+)
+{
+    KernelNvlink *pKernelNvlink = GPU_GET_KERNEL_NVLINK(pGpu);
+    NvU32 linkMaskToBeReduced = 0;
+    NvU64 enabledLinkMask;
+    NvU32 activeLinkMask;
+    NvU32  i;
+    NvBool bIsGfmLinkMaskActive = NV_TRUE;
+    NV_STATUS status = NV_OK;
+
+    enabledLinkMask = knvlinkGetEnabledLinkMask(pGpu, pKernelNvlink);
+
+    // Check if active link mask matches link mask from GFM
+    gpuFabricProbeGetlinkMaskToBeReduced(pGpu->pGpuFabricProbeInfoKernel, &linkMaskToBeReduced);
+    activeLinkMask = (NvU32)(enabledLinkMask & ~linkMaskToBeReduced);
+
+    NV2080_CTRL_INTERNAL_NVLINK_ARE_LINKS_TRAINED_PARAMS linkTrainedParams;
+
+    portMemSet(&linkTrainedParams, 0, sizeof(linkTrainedParams));
+    linkTrainedParams.bActiveOnly = NV_TRUE;
+    linkTrainedParams.linkMask = activeLinkMask;
+
+    NV_CHECK_OK_OR_ELSE(status, LEVEL_ERROR,
+        knvlinkExecGspRmRpc(pGpu, pKernelNvlink,
+                                     NV2080_CTRL_CMD_INTERNAL_NVLINK_ARE_LINKS_TRAINED,
+                                     &linkTrainedParams, sizeof(linkTrainedParams)),
+                                     return NV_FALSE;);
+
+    FOR_EACH_INDEX_IN_MASK(32, i, activeLinkMask)
+    {
+        if (!linkTrainedParams.bIsLinkActive[i])
+        {
+            bIsGfmLinkMaskActive = NV_FALSE;
+            break;
+        }
+    }
+    FOR_EACH_INDEX_IN_MASK_END;
+
+    return bIsGfmLinkMaskActive;
+}
+
+static NV_STATUS
+knvlinkFabricHealthMask_WORKITEM
+(
+    OBJGPU *pGpu,
+    OBJTMR *pTmr,
+    TMR_EVENT *pEvent
+)
+{
+    KernelNvlink *pKernelNvlink = GPU_GET_KERNEL_NVLINK(pGpu);
+    NvU32 healthStatusMask = 0;
+
+    // Get current fabric health status mask
+    gpuFabricProbeGetFabricHealthStatus(pGpu->pGpuFabricProbeInfoKernel, &healthStatusMask);
+    healthStatusMask = FLD_SET_DRF(LINK, _INBAND_FABRIC_HEALTH_MASK, _ROUTE_UPDATE,
+        _FALSE, healthStatusMask);
+
+    if (!_knvlinkIsGfmLinkMaskActive(pGpu))
+    {
+        healthStatusMask = FLD_SET_DRF(LINK, _INBAND_FABRIC_HEALTH_MASK, _INCORRECT_CONFIGURATION,
+                                           _INSUFFICIENT_NVLINKS, healthStatusMask);
+        gpuFabricProbeDegradeCliques(pGpu);
+    }
+
+    gpuFabricProbeOverrideFabricHealthStatus(pGpu->pGpuFabricProbeInfoKernel, healthStatusMask);
+    tmrEventDestroy(pTmr, pEvent);
+    pKernelNvlink->pFabricHealthMaskTmrEvent = NULL;
+    return NV_OK;
+}
+
+NV_STATUS
+knvlinkAbmFabricHealthMaskUpdate_GB100
+(
+    OBJGPU *pGpu,
+    KernelNvlink *pKernelNvlink
+)
+{
+    OBJTMR *pTmr = GPU_GET_TIMER(pGpu);
+    NV_STATUS status;
+
+    if (!gpuFabricProbeIsReceived(pGpu->pGpuFabricProbeInfoKernel))
+    {
+        return NV_OK;
+    }
+
+    if (_knvlinkIsGfmLinkMaskActive(pGpu))
+    {
+        return NV_OK;
+    }
+
+    if (pKernelNvlink->pFabricHealthMaskTmrEvent == NULL)
+    {
+        NvU32 healthStatusMask = 0;
+
+        NV_CHECK_OK_OR_RETURN(LEVEL_ERROR,
+            tmrEventCreate(pTmr, &pKernelNvlink->pFabricHealthMaskTmrEvent,
+                           knvlinkFabricHealthMask_WORKITEM, NULL, TMR_FLAGS_NONE));
+
+        status = tmrEventScheduleRel(pTmr, pKernelNvlink->pFabricHealthMaskTmrEvent,
+                                     NVLINK_FABRIC_HEALTH_MASK_TIMER_DELAY_NS);
+        if (status != NV_OK)
+        {
+            tmrEventDestroy(pTmr, pKernelNvlink->pFabricHealthMaskTmrEvent);
+            pKernelNvlink->pFabricHealthMaskTmrEvent = NULL;
+            return status;
+        }
+
+        gpuFabricProbeGetFabricHealthStatus(pGpu->pGpuFabricProbeInfoKernel, &healthStatusMask);
+        healthStatusMask = FLD_SET_DRF(LINK, _INBAND_FABRIC_HEALTH_MASK, _ROUTE_UPDATE,
+                                           _TRUE, healthStatusMask);
+        gpuFabricProbeOverrideFabricHealthStatus(pGpu->pGpuFabricProbeInfoKernel, healthStatusMask);
+    }
+    else
+    {
+        // Cancel running timer event if new link error occurs before 60 seconds and kick off new timer event
+        tmrEventCancel(pTmr, pKernelNvlink->pFabricHealthMaskTmrEvent);
+        status = tmrEventScheduleRel(pTmr, pKernelNvlink->pFabricHealthMaskTmrEvent,
+                                     NVLINK_FABRIC_HEALTH_MASK_TIMER_DELAY_NS);
+        if (status != NV_OK)
+        {
+            tmrEventDestroy(pTmr, pKernelNvlink->pFabricHealthMaskTmrEvent);
+            pKernelNvlink->pFabricHealthMaskTmrEvent = NULL;
+            return status;
+        }
+    }
 
     return NV_OK;
 }

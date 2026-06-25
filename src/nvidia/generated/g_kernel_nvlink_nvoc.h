@@ -254,7 +254,7 @@ struct KernelNvlink {
     struct OBJENGSTATE *__nvoc_pbase_OBJENGSTATE;    // engstate super
     struct KernelNvlink *__nvoc_pbase_KernelNvlink;    // knvlink
 
-    // Vtable with 48 per-object function pointers
+    // Vtable with 49 per-object function pointers
     NvBool (*__knvlinkIsPresent__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // virtual halified (2 hals) override (engstate) base (engstate)
     NV_STATUS (*__knvlinkSetDirectConnectBaseAddress__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     NV_STATUS (*__knvlinkSetUniqueFabricBaseAddress__)(struct OBJGPU *, struct KernelNvlink * /*this*/, NvU64);  // halified (3 hals) body
@@ -293,6 +293,7 @@ struct KernelNvlink {
     void (*__knvlinkPostSchedulingEnableCallbackUnregister__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     NV_STATUS (*__knvlinkGetSupportedBwMode__)(struct OBJGPU *, struct KernelNvlink * /*this*/, NV2080_CTRL_NVLINK_GET_SUPPORTED_BW_MODE_PARAMS *);  // halified (3 hals) body
     NV_STATUS (*__knvlinkABMLinkMaskUpdate__)(struct OBJGPU *, struct KernelNvlink * /*this*/, NvBool);  // halified (2 hals) body
+    NV_STATUS (*__knvlinkAbmFabricHealthMaskUpdate__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     void (*__knvlinkDirectConnectCheck__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     NvBool (*__knvlinkIsGpuReducedNvlinkConfig__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     NvBool (*__knvlinkIsFloorSweepingNeeded__)(struct OBJGPU *, struct KernelNvlink * /*this*/, NvU32, NvU32);  // halified (2 hals) body
@@ -388,6 +389,7 @@ struct KernelNvlink {
     NvU8 PRIVATE_FIELD(totalRbmModes);
     NvBool PRIVATE_FIELD(bAbmEnabled);
     NvU32 PRIVATE_FIELD(pendingAbmLinkMaskToBeReduced);
+    struct TMR_EVENT *PRIVATE_FIELD(pFabricHealthMaskTmrEvent);
     NvU32 PRIVATE_FIELD(gspProxyRegkeys);
     NvU32 PRIVATE_FIELD(alid);
     NvU32 PRIVATE_FIELD(clid);
@@ -412,7 +414,7 @@ struct KernelNvlink_PRIVATE {
     struct OBJENGSTATE *__nvoc_pbase_OBJENGSTATE;    // engstate super
     struct KernelNvlink *__nvoc_pbase_KernelNvlink;    // knvlink
 
-    // Vtable with 48 per-object function pointers
+    // Vtable with 49 per-object function pointers
     NvBool (*__knvlinkIsPresent__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // virtual halified (2 hals) override (engstate) base (engstate)
     NV_STATUS (*__knvlinkSetDirectConnectBaseAddress__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     NV_STATUS (*__knvlinkSetUniqueFabricBaseAddress__)(struct OBJGPU *, struct KernelNvlink * /*this*/, NvU64);  // halified (3 hals) body
@@ -451,6 +453,7 @@ struct KernelNvlink_PRIVATE {
     void (*__knvlinkPostSchedulingEnableCallbackUnregister__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     NV_STATUS (*__knvlinkGetSupportedBwMode__)(struct OBJGPU *, struct KernelNvlink * /*this*/, NV2080_CTRL_NVLINK_GET_SUPPORTED_BW_MODE_PARAMS *);  // halified (3 hals) body
     NV_STATUS (*__knvlinkABMLinkMaskUpdate__)(struct OBJGPU *, struct KernelNvlink * /*this*/, NvBool);  // halified (2 hals) body
+    NV_STATUS (*__knvlinkAbmFabricHealthMaskUpdate__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     void (*__knvlinkDirectConnectCheck__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     NvBool (*__knvlinkIsGpuReducedNvlinkConfig__)(struct OBJGPU *, struct KernelNvlink * /*this*/);  // halified (2 hals) body
     NvBool (*__knvlinkIsFloorSweepingNeeded__)(struct OBJGPU *, struct KernelNvlink * /*this*/, NvU32, NvU32);  // halified (2 hals) body
@@ -546,6 +549,7 @@ struct KernelNvlink_PRIVATE {
     NvU8 totalRbmModes;
     NvBool bAbmEnabled;
     NvU32 pendingAbmLinkMaskToBeReduced;
+    struct TMR_EVENT *pFabricHealthMaskTmrEvent;
     NvU32 gspProxyRegkeys;
     NvU32 alid;
     NvU32 clid;
@@ -1446,6 +1450,9 @@ static inline NvBool knvlinkIsP2PActive(struct OBJGPU *pGpu, struct KernelNvlink
 #define knvlinkABMLinkMaskUpdate_FNPTR(pKernelNvlink) pKernelNvlink->__knvlinkABMLinkMaskUpdate__
 #define knvlinkABMLinkMaskUpdate(pGpu, pKernelNvlink, bNeedsRCRecovery) knvlinkABMLinkMaskUpdate_DISPATCH(pGpu, pKernelNvlink, bNeedsRCRecovery)
 #define knvlinkABMLinkMaskUpdate_HAL(pGpu, pKernelNvlink, bNeedsRCRecovery) knvlinkABMLinkMaskUpdate_DISPATCH(pGpu, pKernelNvlink, bNeedsRCRecovery)
+#define knvlinkAbmFabricHealthMaskUpdate_FNPTR(pKernelNvlink) pKernelNvlink->__knvlinkAbmFabricHealthMaskUpdate__
+#define knvlinkAbmFabricHealthMaskUpdate(pGpu, pKernelNvlink) knvlinkAbmFabricHealthMaskUpdate_DISPATCH(pGpu, pKernelNvlink)
+#define knvlinkAbmFabricHealthMaskUpdate_HAL(pGpu, pKernelNvlink) knvlinkAbmFabricHealthMaskUpdate_DISPATCH(pGpu, pKernelNvlink)
 #define knvlinkDirectConnectCheck_FNPTR(pKernelNvlink) pKernelNvlink->__knvlinkDirectConnectCheck__
 #define knvlinkDirectConnectCheck(pGpu, pKernelNvlink) knvlinkDirectConnectCheck_DISPATCH(pGpu, pKernelNvlink)
 #define knvlinkDirectConnectCheck_HAL(pGpu, pKernelNvlink) knvlinkDirectConnectCheck_DISPATCH(pGpu, pKernelNvlink)
@@ -1666,6 +1673,10 @@ static inline NV_STATUS knvlinkGetSupportedBwMode_DISPATCH(struct OBJGPU *pGpu, 
 
 static inline NV_STATUS knvlinkABMLinkMaskUpdate_DISPATCH(struct OBJGPU *pGpu, struct KernelNvlink *pKernelNvlink, NvBool bNeedsRCRecovery) {
     return pKernelNvlink->__knvlinkABMLinkMaskUpdate__(pGpu, pKernelNvlink, bNeedsRCRecovery);
+}
+
+static inline NV_STATUS knvlinkAbmFabricHealthMaskUpdate_DISPATCH(struct OBJGPU *pGpu, struct KernelNvlink *pKernelNvlink) {
+    return pKernelNvlink->__knvlinkAbmFabricHealthMaskUpdate__(pGpu, pKernelNvlink);
 }
 
 static inline void knvlinkDirectConnectCheck_DISPATCH(struct OBJGPU *pGpu, struct KernelNvlink *pKernelNvlink) {
@@ -2194,6 +2205,12 @@ static inline NV_STATUS knvlinkGetSupportedBwMode_46f6a7(struct OBJGPU *pGpu, st
 NV_STATUS knvlinkABMLinkMaskUpdate_GB100(struct OBJGPU *pGpu, struct KernelNvlink *pKernelNvlink, NvBool bNeedsRCRecovery);
 
 static inline NV_STATUS knvlinkABMLinkMaskUpdate_46f6a7(struct OBJGPU *pGpu, struct KernelNvlink *pKernelNvlink, NvBool bNeedsRCRecovery) {
+    return NV_ERR_NOT_SUPPORTED;
+}
+
+NV_STATUS knvlinkAbmFabricHealthMaskUpdate_GB100(struct OBJGPU *pGpu, struct KernelNvlink *pKernelNvlink);
+
+static inline NV_STATUS knvlinkAbmFabricHealthMaskUpdate_46f6a7(struct OBJGPU *pGpu, struct KernelNvlink *pKernelNvlink) {
     return NV_ERR_NOT_SUPPORTED;
 }
 

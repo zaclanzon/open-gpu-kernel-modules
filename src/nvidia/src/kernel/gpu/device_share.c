@@ -21,6 +21,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+
+
 #include "core/core.h"
 #include "os/os.h"
 #include "mem_mgr/virt_mem_mgr.h"
@@ -283,6 +285,7 @@ deviceInitClientShare
         // Init target share if needed
         if (pShareDevice->pVASpace == NULL)
         {
+
             status = deviceInitClientShare(pShareDevice,
                                            pShareDevice->hClientShare,
                                            pShareDevice->vaSize,

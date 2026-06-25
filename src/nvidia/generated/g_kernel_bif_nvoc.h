@@ -186,7 +186,7 @@ struct KernelBif {
     struct OBJENGSTATE *__nvoc_pbase_OBJENGSTATE;    // engstate super
     struct KernelBif *__nvoc_pbase_KernelBif;    // kbif
 
-    // Vtable with 67 per-object function pointers
+    // Vtable with 68 per-object function pointers
     NV_STATUS (*__kbifStatePostLoad__)(struct OBJGPU *, struct KernelBif * /*this*/, NvU32);  // virtual halified (2 hals) override (engstate) base (engstate) body
     void (*__kbifDestruct__)(struct KernelBif * /*this*/);  // halified (2 hals) override (engstate) base (engstate) body
     void (*__kbifInitLtr__)(struct OBJGPU *, struct KernelBif * /*this*/);  // halified (2 hals) body
@@ -196,6 +196,7 @@ struct KernelBif {
     NV_STATUS (*__kbifSavePcieConfigRegistersFn1__)(struct OBJGPU *, struct KernelBif * /*this*/, const PKBIF_XVE_REGMAP_REF, NvU32);  // halified (2 hals) body
     NV_STATUS (*__kbifRestorePcieConfigRegistersFn1__)(struct OBJGPU *, struct KernelBif * /*this*/, const PKBIF_XVE_REGMAP_REF, NvU32);  // halified (2 hals) body
     NV_STATUS (*__kbifPollBarFirewallDisengage__)(struct OBJGPU *, struct KernelBif * /*this*/);  // halified (2 hals) body
+    void (*__kbifUpdateCplToWar5656465__)(struct OBJGPU *, struct KernelBif * /*this*/);  // halified (2 hals) body
     NV_STATUS (*__kbifGetXveStatusBits__)(struct OBJGPU *, struct KernelBif * /*this*/, NvU32 *, NvU32 *);  // halified (4 hals) body
     NV_STATUS (*__kbifClearXveStatus__)(struct OBJGPU *, struct KernelBif * /*this*/, NvU32 *);  // halified (4 hals) body
     NV_STATUS (*__kbifGetXveAerBits__)(struct OBJGPU *, struct KernelBif * /*this*/, NvU32 *);  // halified (4 hals) body
@@ -636,6 +637,9 @@ static inline NV_STATUS kbifApplyWarForBug1511451(struct OBJGPU *pGpu, struct Ke
 #define kbifPollBarFirewallDisengage_FNPTR(pKernelBif) pKernelBif->__kbifPollBarFirewallDisengage__
 #define kbifPollBarFirewallDisengage(pGpu, pKernelBif) kbifPollBarFirewallDisengage_DISPATCH(pGpu, pKernelBif)
 #define kbifPollBarFirewallDisengage_HAL(pGpu, pKernelBif) kbifPollBarFirewallDisengage_DISPATCH(pGpu, pKernelBif)
+#define kbifUpdateCplToWar5656465_FNPTR(pKernelBif) pKernelBif->__kbifUpdateCplToWar5656465__
+#define kbifUpdateCplToWar5656465(pGpu, pKernelBif) kbifUpdateCplToWar5656465_DISPATCH(pGpu, pKernelBif)
+#define kbifUpdateCplToWar5656465_HAL(pGpu, pKernelBif) kbifUpdateCplToWar5656465_DISPATCH(pGpu, pKernelBif)
 #define kbifClearConfigErrors_HAL(pGpu, pKernelBif, arg3, arg4) kbifClearConfigErrors(pGpu, pKernelBif, arg3, arg4)
 #define kbifGetXveStatusBits_FNPTR(pKernelBif) pKernelBif->__kbifGetXveStatusBits__
 #define kbifGetXveStatusBits(pGpu, pKernelBif, pBits, pStatus) kbifGetXveStatusBits_DISPATCH(pGpu, pKernelBif, pBits, pStatus)
@@ -882,6 +886,10 @@ static inline NV_STATUS kbifRestorePcieConfigRegistersFn1_DISPATCH(struct OBJGPU
 
 static inline NV_STATUS kbifPollBarFirewallDisengage_DISPATCH(struct OBJGPU *pGpu, struct KernelBif *pKernelBif) {
     return pKernelBif->__kbifPollBarFirewallDisengage__(pGpu, pKernelBif);
+}
+
+static inline void kbifUpdateCplToWar5656465_DISPATCH(struct OBJGPU *pGpu, struct KernelBif *pKernelBif) {
+    pKernelBif->__kbifUpdateCplToWar5656465__(pGpu, pKernelBif);
 }
 
 static inline NV_STATUS kbifGetXveStatusBits_DISPATCH(struct OBJGPU *pGpu, struct KernelBif *pKernelBif, NvU32 *pBits, NvU32 *pStatus) {
@@ -1225,6 +1233,12 @@ NV_STATUS kbifPollBarFirewallDisengage_GB202(struct OBJGPU *pGpu, struct KernelB
 
 static inline NV_STATUS kbifPollBarFirewallDisengage_56cd7a(struct OBJGPU *pGpu, struct KernelBif *pKernelBif) {
     return NV_OK;
+}
+
+void kbifUpdateCplToWar5656465_GB202(struct OBJGPU *pGpu, struct KernelBif *pKernelBif);
+
+static inline void kbifUpdateCplToWar5656465_b3696a(struct OBJGPU *pGpu, struct KernelBif *pKernelBif) {
+    return;
 }
 
 NV_STATUS kbifGetXveStatusBits_GM107(struct OBJGPU *pGpu, struct KernelBif *pKernelBif, NvU32 *pBits, NvU32 *pStatus);

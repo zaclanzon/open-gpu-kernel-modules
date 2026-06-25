@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 1993-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: Copyright (c) 1993-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -3447,6 +3447,7 @@ DeviceHDCPDetection::handleRemoteDpcdReadDownReply
     MessageManager::Message *from
 )
 {
+
     NvU8 i2cBcaps;
     unsigned dataCompleted;
     unsigned defaultReason;
@@ -3665,6 +3666,7 @@ DeviceHDCPDetection::messageFailed
     NakData *nakData
 )
 {
+
     if (from == &remoteBKSVReadMessage)
     {
         if ((retriesRemoteBKSVReadMessage < DPCD_REMOTE_DPCD_READ_MESSAGE_RETRIES) &&
@@ -3728,6 +3730,7 @@ DeviceHDCPDetection::messageFailed
     // Destruct only when no message is pending
     if (!(bBKSVReadMessagePending || bBCapsReadMessagePending))
     {
+        // Becareful below is ! ..
         parent->isDeviceHDCPDetectionAlive = false;
 
         // Complete remote HDCP probe and check if can power down again.
@@ -3747,6 +3750,7 @@ DeviceHDCPDetection::expired
     const void *tag
 )
 {
+
     // Clear stale HDCP states when monitor instance is already destroyed
     if (!parent->plugged)
     {
@@ -3826,7 +3830,6 @@ DeviceHDCPDetection::expired
 
 DeviceHDCPDetection::~DeviceHDCPDetection()
 {
-    parent->isDeviceHDCPDetectionAlive = false;
 
     // Clear all pending callbacks/messages
     if (this->timer)
@@ -3847,6 +3850,7 @@ DeviceHDCPDetection::waivePendingHDCPCapDoneNotification()
 {
     // Waive the pendingHDCPCapDone notification
     parent->shadow.hdcpCapDone = true;
+
     parent->isDeviceHDCPDetectionAlive = false;
     delete this;
 }

@@ -284,7 +284,8 @@ enum {
     E(GSP_POST_NOCAT_RECORD,                                  0x1020)
     E(FECS_ERROR,                                             0x1021)
     E(RECOVERY_ACTION,                                        0x1022)
-    E(NUM_EVENTS,                                             0x1023)
+    E(NVLINK_ABM_FABRIC_HEALTH_MASK_UPDATE,                   0x1023)
+    E(NUM_EVENTS,                                             0x1024)
 #ifdef DEFINING_E_IN_RPC_GLOBAL_ENUMS_H
 };
 #   undef E

@@ -443,6 +443,40 @@ _kgspRpcRunCpuSequencer
 }
 
 static void
+_kgspRpcNvlinkAbmFabricHealthMaskUpdateCallback
+(
+    NvU32 gpuInstance,
+    void *pArgs
+)
+{
+    OBJGPU *pGpu = gpumgrGetGpu(gpuInstance);
+    KernelNvlink *pKernelNvlink;
+
+    NV_ASSERT_OR_RETURN_VOID(pGpu != NULL);
+
+    pKernelNvlink = GPU_GET_KERNEL_NVLINK(pGpu);
+    NV_ASSERT_OR_RETURN_VOID(pKernelNvlink != NULL);
+
+    NV_ASSERT_OK(knvlinkAbmFabricHealthMaskUpdate(pGpu, pKernelNvlink));
+}
+
+static NV_STATUS
+_kgspRpcNvlinkAbmFabricHealthMaskUpdate
+(
+    OBJGPU *pGpu,
+    OBJRPC *pRpc
+)
+{
+    // The callback RPCs to GSP, so it must be done with osQueueWorkItem
+    return osQueueWorkItem(pGpu,
+                           _kgspRpcNvlinkAbmFabricHealthMaskUpdateCallback,
+                           NULL,
+                           (OS_QUEUE_WORKITEM_FLAGS_LOCK_SEMA |
+                            OS_QUEUE_WORKITEM_FLAGS_LOCK_API_RO |
+                            OS_QUEUE_WORKITEM_FLAGS_LOCK_GPUS));
+}
+
+static void
 _kgspProcessEccNotifier
 (
     OBJGPU *pGpu,
@@ -1605,6 +1639,10 @@ _kgspProcessRpcEvent
 
         case NV_VGPU_MSG_EVENT_RECOVERY_ACTION:
             nvStatus = _kgspRpcGspEventRecoveryAction(pGpu, pRpc);
+            break;
+
+        case NV_VGPU_MSG_EVENT_NVLINK_ABM_FABRIC_HEALTH_MASK_UPDATE:
+            nvStatus = _kgspRpcNvlinkAbmFabricHealthMaskUpdate(pGpu, pRpc);
             break;
 
         case NV_VGPU_MSG_EVENT_GSP_INIT_DONE:   // Handled by _kgspRpcRecvPoll.

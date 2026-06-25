@@ -1388,8 +1388,10 @@ static void postEvent(
 {
     if (osReferenceObjectCount(event) != NV_OK)
         return;
+
     nv_post_event(event, hEvent, notifyIndex,
                   info32, info16, dataValid);
+
     osDereferenceObjectCount(event);
 }
 
@@ -3362,6 +3364,14 @@ static NvBool skipIovaMappingForTegra
     return NV_FALSE;
 }
 
+static NvBool osMemDescRequiresReadOnlyDeviceDmaMap
+(
+    MEMORY_DESCRIPTOR *pMemDesc
+)
+{
+    return NV_FALSE;
+}
+
 /*!
  * @brief Map memory into an IOVA space according to the given mapping info.
  *
@@ -3510,11 +3520,14 @@ osIovaMap
 
     if (!bIsBar0 && (!bIsFbOffset || bIsIndirectPeerMapping))
     {
+        NvBool bReadOnlyDeviceMap =
+            osMemDescRequiresReadOnlyDeviceDmaMap(pIovaMapping->pPhysMemDesc);
+
         status = nv_dma_map_alloc(
                     osGetDmaDeviceForMemDesc(nv, pIovaMapping->pPhysMemDesc),
                     osPageCount,
                     &pIovaMapping->iovaArray[0],
-                    bIsContig, &pPriv);
+                    bIsContig, bReadOnlyDeviceMap, &pPriv);
         if (status != NV_OK)
         {
             NV_PRINTF(LEVEL_ERROR,

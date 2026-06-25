@@ -1143,10 +1143,11 @@ static void nvGpuOpsRmDeviceDestroy(struct gpuDevice *device)
 
         portSyncRwLockAcquireWrite(session->devicesLock);
         deleteDescriptor(&session->devices, deviceKey, (void**)&rmDevice);
+        portSyncRwLockReleaseWrite(session->devicesLock);
+
         pRmApi->Free(pRmApi, session->handle, rmDevice->deviceHandle);
         portSyncRwLockDestroy(rmDevice->btreeLock);
         portMemFree(rmDevice);
-        portSyncRwLockReleaseWrite(session->devicesLock);
     }
 }
 
@@ -8877,7 +8878,10 @@ NV_STATUS nvGpuOpsSetPageDirectory(struct gpuAddressSpace *vaSpace,
     // RM clients must not unmap this address, and instead rely on RM to unmap
     // it when nvGpuOpsUnsetPageDirectory() is called.
     //
-    *dmaAddress = memdescGetPhysAddr(vaspaceGetPageDirBase(pVAS, pGpu), AT_GPU, 0);
+    if (status == NV_OK)
+    {
+        *dmaAddress = memdescGetPhysAddr(vaspaceGetPageDirBase(pVAS, pGpu), AT_GPU, 0);
+    }
 
     if (vaspaceIsExternallyOwned(pVAS))
     {
