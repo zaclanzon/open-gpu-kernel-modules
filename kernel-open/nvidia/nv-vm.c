@@ -464,6 +464,20 @@ static void nv_mem_pool_shrinker_register(nv_page_pool_t *mem_pool, struct shrin
 }
 #endif // NV_SHRINKER_ALLOC_PRESENT
 
+// Pages in the pool are reclaimable non-slab kernel memory.  Tracking them
+// with NR_KERNEL_MISC_RECLAIMABLE lets si_mem_available() include them in
+// MemAvailable (/proc/meminfo), giving the kernel an accurate picture of how
+// much memory can be recovered under pressure via the registered shrinker.
+static void nv_mem_pool_mod_misc_reclaimable(nv_page_pool_t *mem_pool, long delta_compound_pages)
+{
+#if defined(NV_NR_KERNEL_MISC_RECLAIMABLE_PRESENT)
+    if (delta_compound_pages != 0)
+        mod_node_page_state(NODE_DATA(mem_pool->node_id),
+                            NR_KERNEL_MISC_RECLAIMABLE,
+                            delta_compound_pages << mem_pool->order);
+#endif
+}
+
 static unsigned long
 nv_mem_pool_move_pages
 (
@@ -561,6 +575,8 @@ nv_mem_pool_shrinker_scan
     mem_pool->pages_owned -= pages_freed;
     os_release_mutex(mem_pool->lock);
 
+    nv_mem_pool_mod_misc_reclaimable(mem_pool, -(long)pages_freed);
+
     nv_mem_pool_free_page_list(&reclaim_list, mem_pool->order);
 
     nv_printf(NV_DBG_MEMINFO, "NVRM: VM: %s: node=%d order=%u: %lu/%lu pages freed\n",
@@ -618,6 +634,8 @@ nv_mem_pool_alloc_pages
     mem_pool->pages_owned -= pages_allocated;
     pages_owned = mem_pool->pages_owned;
     os_release_mutex(mem_pool->lock);
+
+    nv_mem_pool_mod_misc_reclaimable(mem_pool, -(long)pages_allocated);
 
     while ((pool_entry = NV_MEM_POOL_LIST_HEAD(&alloc_clean_pages)))
     {
@@ -691,9 +709,12 @@ void
 nv_mem_pool_destroy(nv_page_pool_t *mem_pool)
 {
     NV_STATUS status;
+    unsigned long saved_pages_owned;
 
     status = os_acquire_mutex(mem_pool->lock);
     WARN_ON(status != NV_OK);
+    // Snapshot before freeing: counts dirty + in-flight + clean pages.
+    saved_pages_owned = mem_pool->pages_owned;
     nv_mem_pool_free_page_list(&mem_pool->dirty_list, mem_pool->order);
     os_release_mutex(mem_pool->lock);
 
@@ -705,6 +726,8 @@ nv_mem_pool_destroy(nv_page_pool_t *mem_pool)
     // free clean pages after scrubber can't add any new
     nv_mem_pool_free_page_list(&mem_pool->clean_list, mem_pool->order);
     os_release_mutex(mem_pool->lock);
+
+    nv_mem_pool_mod_misc_reclaimable(mem_pool, -(long)saved_pages_owned);
 
     nv_mem_pool_shrinker_free(mem_pool);
 
@@ -832,8 +855,12 @@ nv_mem_pool_free_pages
     pages_owned = mem_pool->pages_owned;
     os_release_mutex(mem_pool->lock);
 
-    nv_printf(NV_DBG_MEMINFO, "NVRM: VM: %s: node=%d order=%u: %lu/%lu pages added to pool (%lu now in pool)\n",
-              __FUNCTION__, mem_pool->node_id, mem_pool->order, num_added_pages, num_pages, pages_owned);
+    nv_mem_pool_mod_misc_reclaimable(mem_pool, (long)num_added_pages);
+
+    nv_printf(NV_DBG_MEMINFO, "NVRM: VM: %s: at = %lx, at->order = %u, at->num_pages = %u, \
+                pool_order = %u: %lu/%lu pages added to pool (%lu now in pool)\n", \
+              __FUNCTION__, (long int) at, at->order, at->num_pages, mem_pool->order, \
+              num_added_pages, num_pages, pages_owned);
 
     if (queue_worker)
     {
@@ -1120,6 +1147,35 @@ static NvUPtr nv_vmap(struct page **pages, NvU32 page_count,
     NV_MEMDBG_ADD(ptr, page_count * PAGE_SIZE);
 
     return (NvUPtr)ptr;
+}
+
+NvU64 nv_get_reclaimable_memory_usage(void)
+{
+    int node_id;
+    unsigned int order;
+    NvU64 reclaimable_memory_bytes = 0;
+
+    for_each_node(node_id)
+    {
+        for (order = 0; order <= NV_MAX_PAGE_ORDER; order++)
+        {
+            if (sysmem_page_pools[node_id][order])
+            {
+                nv_printf(NV_DBG_MEMINFO, "NVRM: VM: %s: node_id = %u, pool_order = %u: %lu pages in pool\n", \
+                    __FUNCTION__, node_id, sysmem_page_pools[node_id][order]->order, \
+                    sysmem_page_pools[node_id][order]->pages_owned);
+
+                reclaimable_memory_bytes += (sysmem_page_pools[node_id][order]->pages_owned \
+                                                << sysmem_page_pools[node_id][order]->order) \
+                                                * PAGE_SIZE;
+
+                nv_printf(NV_DBG_MEMINFO, "NVRM: VM: %s: reclaimable_memory_bytes = %d\n", \
+                                            __FUNCTION__, reclaimable_memory_bytes);
+            }
+        }
+    }
+
+    return reclaimable_memory_bytes;
 }
 
 static void nv_vunmap(NvUPtr vaddr, NvU32 page_count)

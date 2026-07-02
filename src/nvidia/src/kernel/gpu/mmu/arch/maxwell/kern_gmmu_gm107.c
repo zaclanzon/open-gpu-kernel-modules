@@ -180,7 +180,10 @@ kgmmuInvalidateTlb_GM107
         status = kgmmuCheckPendingInvalidates_HAL(pGpu, pKernelGmmu, &params.timeout);
         if (status != NV_OK)
         {
-           return status;
+            NV_PRINTF(LEVEL_ERROR,
+                      "TLB invalidation failed waiting for prior invalidate (status=0x%08x), vaspaceFlags 0x%x, scope 0x%x, GFID %u\n",
+                      status, vaspaceFlags, invalidation_scope, gfid);
+            return status;
         }
     }
 
@@ -238,13 +241,21 @@ kgmmuInvalidateTlb_GM107
 
     status = kgmmuSetTlbInvalidationScope_HAL(pGpu, pKernelGmmu, invalidation_scope, &params);
     if (!(status == NV_OK || status == NV_ERR_NOT_SUPPORTED))
+    {
+        NV_PRINTF(LEVEL_ERROR,
+                  "TLB invalidation failed setting scope (status=0x%08x) for PDB 0x%08llx, vaspaceFlags 0x%x, scope 0x%x, GFID %u\n",
+                  status, params.pdbAddress, vaspaceFlags, invalidation_scope, gfid);
         return status;
+    }
 
     if (bDoVgpuRpc)
     {
         NV_RM_RPC_INVALIDATE_TLB(pGpu, status, params.pdbAddress, params.regVal);
         if (status != NV_OK)
         {
+            NV_PRINTF(LEVEL_ERROR,
+                      "TLB invalidation RPC failed (status=0x%08x) for PDB 0x%08llx, vaspaceFlags 0x%x, scope 0x%x, GFID %u\n",
+                      status, params.pdbAddress, vaspaceFlags, invalidation_scope, gfid);
             return status;
         }
     }
@@ -254,6 +265,9 @@ kgmmuInvalidateTlb_GM107
         status = kgmmuCommitTlbInvalidate_HAL(pGpu, pKernelGmmu, &params);
         if (status != NV_OK)
         {
+            NV_PRINTF(LEVEL_ERROR,
+                      "TLB invalidation failed waiting for completion (status=0x%08x) for PDB 0x%08llx, vaspaceFlags 0x%x, scope 0x%x, GFID %u\n",
+                      status, params.pdbAddress, vaspaceFlags, invalidation_scope, gfid);
             return status;
         }
     }
@@ -265,6 +279,13 @@ kgmmuInvalidateTlb_GM107
         {
             break;
         }
+    }
+
+    if (status != NV_OK)
+    {
+        NV_PRINTF(LEVEL_ERROR,
+                  "TLB invalidation sysmembar failed (status=0x%08x) for PDB 0x%08llx, vaspaceFlags 0x%x, scope 0x%x, GFID %u\n",
+                  status, params.pdbAddress, vaspaceFlags, invalidation_scope, gfid);
     }
 
     return status;

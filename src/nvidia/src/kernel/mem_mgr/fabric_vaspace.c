@@ -683,7 +683,7 @@ fabricvaspaceBatchFree_IMPL
     pFabricVAS->ucFabricInUseSize -= totalFreeSize;
 }
 
-void
+NV_STATUS
 fabricvaspaceInvalidateTlb_IMPL
 (
     FABRIC_VASPACE      *pFabricVAS,
@@ -691,7 +691,7 @@ fabricvaspaceInvalidateTlb_IMPL
     VAS_PTE_UPDATE_TYPE  type
 )
 {
-    vaspaceInvalidateTlb(pFabricVAS->pGVAS, pFabricVAS->pGpu, type);
+    return vaspaceInvalidateTlb(pFabricVAS->pGVAS, pFabricVAS->pGpu, type);
 }
 
 NV_STATUS

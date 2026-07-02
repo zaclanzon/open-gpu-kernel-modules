@@ -169,7 +169,7 @@ struct NVOC_VTABLE__FABRIC_VASPACE {
     NV_STATUS (*__fabricvaspaceGetVasInfo__)(struct FABRIC_VASPACE * /*this*/, NV0080_CTRL_DMA_ADV_SCHED_GET_VA_CAPS_PARAMS *);  // virtual override (vaspace) base (vaspace)
     NV_STATUS (*__fabricvaspacePinRootPageDir__)(struct FABRIC_VASPACE * /*this*/, struct OBJGPU *);  // virtual override (vaspace) base (vaspace)
     void (*__fabricvaspaceUnpinRootPageDir__)(struct FABRIC_VASPACE * /*this*/, struct OBJGPU *);  // virtual override (vaspace) base (vaspace)
-    void (*__fabricvaspaceInvalidateTlb__)(struct FABRIC_VASPACE * /*this*/, struct OBJGPU *, VAS_PTE_UPDATE_TYPE);  // virtual override (vaspace) base (vaspace)
+    NV_STATUS (*__fabricvaspaceInvalidateTlb__)(struct FABRIC_VASPACE * /*this*/, struct OBJGPU *, VAS_PTE_UPDATE_TYPE);  // virtual override (vaspace) base (vaspace)
     NV_STATUS (*__fabricvaspaceIncAllocRefCnt__)(struct FABRIC_VASPACE * /*this*/, NvU64);  // inline virtual inherited (vaspace) base (vaspace) body
     NvU64 (*__fabricvaspaceGetVaStart__)(struct FABRIC_VASPACE * /*this*/);  // virtual inherited (vaspace) base (vaspace)
     NvU64 (*__fabricvaspaceGetVaLimit__)(struct FABRIC_VASPACE * /*this*/);  // virtual inherited (vaspace) base (vaspace)
@@ -454,8 +454,8 @@ static inline void fabricvaspaceUnpinRootPageDir_DISPATCH(struct FABRIC_VASPACE 
     pFabricVAS->__nvoc_metadata_ptr->vtable.__fabricvaspaceUnpinRootPageDir__(pFabricVAS, pGpu);
 }
 
-static inline void fabricvaspaceInvalidateTlb_DISPATCH(struct FABRIC_VASPACE *pFabricVAS, struct OBJGPU *pUnused, VAS_PTE_UPDATE_TYPE type) {
-    pFabricVAS->__nvoc_metadata_ptr->vtable.__fabricvaspaceInvalidateTlb__(pFabricVAS, pUnused, type);
+static inline NV_STATUS fabricvaspaceInvalidateTlb_DISPATCH(struct FABRIC_VASPACE *pFabricVAS, struct OBJGPU *pUnused, VAS_PTE_UPDATE_TYPE type) {
+    return pFabricVAS->__nvoc_metadata_ptr->vtable.__fabricvaspaceInvalidateTlb__(pFabricVAS, pUnused, type);
 }
 
 static inline NV_STATUS fabricvaspaceIncAllocRefCnt_DISPATCH(struct FABRIC_VASPACE *pVAS, NvU64 vAddr) {
@@ -545,7 +545,7 @@ NV_STATUS fabricvaspacePinRootPageDir_IMPL(struct FABRIC_VASPACE *pFabricVAS, st
 
 void fabricvaspaceUnpinRootPageDir_IMPL(struct FABRIC_VASPACE *pFabricVAS, struct OBJGPU *pGpu);
 
-void fabricvaspaceInvalidateTlb_IMPL(struct FABRIC_VASPACE *pFabricVAS, struct OBJGPU *pUnused, VAS_PTE_UPDATE_TYPE type);
+NV_STATUS fabricvaspaceInvalidateTlb_IMPL(struct FABRIC_VASPACE *pFabricVAS, struct OBJGPU *pUnused, VAS_PTE_UPDATE_TYPE type);
 
 // Exported method declarations and/or inline definitions
 // HAL method declarations without bodies

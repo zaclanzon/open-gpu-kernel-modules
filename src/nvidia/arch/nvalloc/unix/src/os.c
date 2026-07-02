@@ -792,6 +792,7 @@ NV_STATUS osQueueWorkItem(
     pWi->flags.bLockGpuGroupSubdevice  = flags.bLockGpuGroupSubdevice;
     pWi->flags.bFullGpuSanity          = flags.bFullGpuSanity;
     pWi->flags.bDropOnUnloadQueueFlush = flags.bDropOnUnloadQueueFlush;
+    pWi->flags.bSetExpandedGpuVisibility = flags.bSetExpandedGpuVisibility;
 
     pWi->flags.bRequiresGpu = NV_TRUE;
     pWi->gpuInstance = gpuGetInstance(pGpu);
@@ -1460,14 +1461,29 @@ static void postEvent(
     NvU32 notifyIndex,
     NvU32 info32,
     NvU16 info16,
-    NvBool dataValid
+    NvBool dataValid,
+    NvBool bDoRefCount
 )
 {
-    if (osReferenceObjectCount(event) != NV_OK)
-        return;
-    nv_post_event(event, hEvent, notifyIndex,
+    nv_event_t *eventToPost = event;
+
+    if (bDoRefCount)
+    {
+        if (osReferenceObjectCount(event) != NV_OK)
+            return;
+    }
+    else
+    {
+        // Best effort. Can be changed in parallel by free_os_event.
+        if (event->active == 0)
+            return;
+    }
+
+    nv_post_event(eventToPost, hEvent, notifyIndex,
                   info32, info16, dataValid);
-    osDereferenceObjectCount(event);
+
+    if (bDoRefCount)
+        osDereferenceObjectCount(event);
 }
 
 NvU32 osSetEvent
@@ -1477,7 +1493,7 @@ NvU32 osSetEvent
 )
 {
     nv_event_t *event = NvP64_VALUE(eventID);
-    postEvent(event, 0, 0, 0, 0, NV_FALSE);
+    postEvent(event, 0, 0, 0, 0, NV_FALSE, NV_TRUE);
     return 1;
 }
 
@@ -1486,7 +1502,8 @@ NV_STATUS osNotifyEvent(
     PEVENTNOTIFICATION  NotifyEvent,
     NvU32               Method,
     NvU32               Data,
-    NV_STATUS           Status
+    NV_STATUS           Status,
+    NvBool              bDoRefCount
 )
 {
     NV_STATUS rmStatus = NV_OK;
@@ -1501,7 +1518,8 @@ NV_STATUS osNotifyEvent(
                       NotifyEvent->hEvent,
                       NotifyEvent->NotifyIndex,
                       0, 0,
-                      NotifyEvent->bEventDataRequired);
+                      NotifyEvent->bEventDataRequired,
+                      bDoRefCount);
             break;
         }
 
@@ -1588,7 +1606,8 @@ NV_STATUS osEventNotificationWithInfo
                           pNotifyEvent->hEvent,
                           pNotifyEvent->NotifyIndex,
                           info32, info16,
-                          pNotifyEvent->bEventDataRequired);
+                          pNotifyEvent->bEventDataRequired,
+                          NV_TRUE);
                 break;
             }
 
@@ -1657,7 +1676,8 @@ NV_STATUS osObjectEventNotification
                           pNotifyEvent->hEvent,
                           pNotifyEvent->NotifyIndex,
                           0, 0,
-                          pNotifyEvent->bEventDataRequired);
+                          pNotifyEvent->bEventDataRequired,
+                          NV_TRUE);
                 break;
             }
 
@@ -1687,7 +1707,7 @@ NV_STATUS osReferenceObjectCount(void *pEvent)
 
     portSyncSpinlockAcquire(nv->event_spinlock);
     // If event->active is false, don't allow any more reference
-    if (!event->active)
+    if (event->active == 0)
     {
         portSyncSpinlockRelease(nv->event_spinlock);
         return NV_ERR_INVALID_EVENT;
@@ -3437,6 +3457,14 @@ static NvBool skipIovaMappingForTegra
     return NV_FALSE;
 }
 
+static NvBool osMemDescRequiresReadOnlyDeviceDmaMap
+(
+    MEMORY_DESCRIPTOR *pMemDesc
+)
+{
+    return NV_FALSE;
+}
+
 /*!
  * @brief Map memory into an IOVA space according to the given mapping info.
  *
@@ -3597,11 +3625,14 @@ osIovaMap
 
     if (!bIsBar0 && (!bIsFbOffset || bIsIndirectPeerMapping))
     {
+        NvBool bReadOnlyDeviceMap =
+            osMemDescRequiresReadOnlyDeviceDmaMap(pIovaMapping->pPhysMemDesc);
+
         status = nv_dma_map_alloc(
                     osGetDmaDeviceForMemDesc(nv, pIovaMapping->pPhysMemDesc),
                     osPageCount,
                     &pIovaMapping->iovaArray[0],
-                    bIsContig, &pPriv);
+                    bIsContig, bReadOnlyDeviceMap, &pPriv);
         if (status != NV_OK)
         {
             NV_PRINTF(LEVEL_ERROR,
@@ -5929,6 +5960,11 @@ osReleaseGpuOsInfo
 )
 {
     nv_put_file_private(pOsInfo);
+}
+
+NvU64 osGetReclaimableMemoryUsage(void)
+{
+    return os_get_reclaimable_memory_usage();
 }
 
 /*!

@@ -204,6 +204,7 @@ CSINFO chipsetInfo[] =
     {PCI_VENDOR_ID_INTEL,       0x7D1C, CS_INTEL_7D06,      "Intel-Arrowlake",      Intel_7D06_setupFunc},
     {PCI_VENDOR_ID_INTEL,       0x7D2A, CS_INTEL_7D06,      "Intel-Arrowlake",      Intel_7D06_setupFunc},
     {PCI_VENDOR_ID_INTEL,       0x7D2D, CS_INTEL_7D06,      "Intel-Arrowlake",      Intel_7D06_setupFunc},
+	{PCI_VENDOR_ID_INTEL,       0x7D2E, CS_INTEL_7D06,      "Intel-Arrowlake",      Intel_7D06_setupFunc},
     {PCI_VENDOR_ID_INTEL,       0x7D2F, CS_INTEL_7D06,      "Intel-Arrowlake",      Intel_7D06_setupFunc},
     {PCI_VENDOR_ID_INTEL,       0x7D35, CS_INTEL_7D06,      "Intel-Arrowlake",      Intel_7D06_setupFunc},
     {PCI_VENDOR_ID_INTEL,       0x7D67, CS_INTEL_7D06,      "Intel-Arrowlake",      Intel_7D06_setupFunc},

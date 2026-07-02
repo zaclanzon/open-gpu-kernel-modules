@@ -165,7 +165,7 @@ CliNotifyVgpuConfigEvent
         {
             if (pEventNotification->NotifyIndex == notifyIndex)
             {
-                if (osNotifyEvent(pGpu, pEventNotification, 0, 0, 0) != NV_OK)
+                if (osNotifyEvent(pGpu, pEventNotification, 0, 0, 0, NV_TRUE) != NV_OK)
                 {
                     NV_PRINTF(LEVEL_ERROR,
                               "CliNotifyVgpuEvent: failed to deliver event 0x%x\n",

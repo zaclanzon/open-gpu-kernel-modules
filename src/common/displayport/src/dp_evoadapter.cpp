@@ -116,8 +116,12 @@ const struct
     {NV_DP_REGKEY_ENABLE_128b132b_DSC_LNK_CFG_REDUCTION,  &dpRegkeyDatabase.bEnable128b132bDSCLnkCfgReduction,  DP_REG_VAL_BOOL},
     {NV_DP_REGKEY_DISABLE_NATIVE_DISPLAYID2X_SUPPORT,     &dpRegkeyDatabase.bDisableNativeDisplayId2xSupport,   DP_REG_VAL_BOOL},
     {NV_DP_REGKEY_USE_MAX_DSC_COMPRESSION_MST,            &dpRegkeyDatabase.bUseMaxDSCCompressionMST,           DP_REG_VAL_BOOL},
+    {NV_DP_REGKEY_SKIP_PANEL_D3_IN_PSR,                   &dpRegkeyDatabase.bSkipPanelPowerdownInPsr,           DP_REG_VAL_BOOL},
     {NV_DP_REGKEY_FORCE_NLPIGNORE_DDS,                    &dpRegkeyDatabase.bIgnoreUnplugUnlessRequested,       DP_REG_VAL_BOOL},
-    {NV_DP_REGKEY_ENABLE_CLEAR_MSA_WHEN_NOT_USED,         &dpRegkeyDatabase.bEnableClearMSAWhenNotUsed,         DP_REG_VAL_BOOL}
+    {NV_DP_REGKEY_ENABLE_CLEAR_MSA_WHEN_NOT_USED,         &dpRegkeyDatabase.bEnableClearMSAWhenNotUsed,         DP_REG_VAL_BOOL},
+    {NV_DP_REGKEY_SKIP_PANEL_POWER_WRITE,                 &dpRegkeyDatabase.bSkipPanelPowerWrite,               DP_REG_VAL_BOOL},
+    {NV_DP_REGKEY_SET_CONNECTOR_HDMI_FOR_DONGLE,          &dpRegkeyDatabase.bSetConnectorHdmiForDongle,         DP_REG_VAL_BOOL},
+    {NV_DP_REGKEY_ENABLE_SST_EDID_RECOVERY_FIX,          &dpRegkeyDatabase.bEnableSstEdidRecoveryFix,          DP_REG_VAL_BOOL}
 };
 
 EvoMainLink::EvoMainLink(EvoInterface * provider, Timer * timer) :

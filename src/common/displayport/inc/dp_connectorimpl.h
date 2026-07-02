@@ -129,6 +129,7 @@ namespace DisplayPort
         bool    bIsDiscoveryDetectActive;       // To tell device discovery is active ( isDiscoveryDetectComplete is also used as DD notify and not want to impacts that. )
         bool    isDiscoveryDetectComplete;      // To tell device discovery is finished.
         bool    bDeferNotifyLostDevice;         // To tell if we should defer notify lost device event to client.
+        bool    bSkipPanelPowerWrite;           // Skip writing panel power state when the regkey is set.
 
         HDCPValidateData hdcpValidateData;      // Cache the HDCP ValidateData.
         unsigned authRetries;                   // Retry counter for the authentication.
@@ -354,8 +355,14 @@ namespace DisplayPort
         //
         bool        bForceHeadShutdownOnModeTransition;
 
-         // Use max DSC compression for MST topologies
+        // Use max DSC compression for MST topologies
         bool        bUseMaxDSCCompressionMST;
+
+        //
+        // Sets connector to HDMI for Dongle if
+        // port type is DP++.
+        //
+        bool        bSetConnectorHdmiForDongle;
 
         // Flag to tell whether to send QSE after stream encryption on
         bool        bIsEncryptionQseValid;

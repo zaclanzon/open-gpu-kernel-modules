@@ -194,7 +194,7 @@ struct NVOC_VTABLE__OBJIOVASPACE {
     PMEMORY_DESCRIPTOR (*__iovaspaceGetPageDirBase__)(struct OBJIOVASPACE * /*this*/, struct OBJGPU *);  // inline virtual inherited (vaspace) base (vaspace) body
     NV_STATUS (*__iovaspacePinRootPageDir__)(struct OBJIOVASPACE * /*this*/, struct OBJGPU *);  // inline virtual inherited (vaspace) base (vaspace) body
     void (*__iovaspaceUnpinRootPageDir__)(struct OBJIOVASPACE * /*this*/, struct OBJGPU *);  // inline virtual inherited (vaspace) base (vaspace) body
-    void (*__iovaspaceInvalidateTlb__)(struct OBJIOVASPACE * /*this*/, struct OBJGPU *, VAS_PTE_UPDATE_TYPE);  // virtual inherited (vaspace) base (vaspace)
+    NV_STATUS (*__iovaspaceInvalidateTlb__)(struct OBJIOVASPACE * /*this*/, struct OBJGPU *, VAS_PTE_UPDATE_TYPE);  // virtual inherited (vaspace) base (vaspace)
     NV_STATUS (*__iovaspaceGetPageTableInfo__)(struct OBJIOVASPACE * /*this*/, NV0080_CTRL_DMA_GET_PDE_INFO_PARAMS *);  // inline virtual inherited (vaspace) base (vaspace) body
     NV_STATUS (*__iovaspaceGetPteInfo__)(struct OBJIOVASPACE * /*this*/, struct OBJGPU *, NV0080_CTRL_DMA_GET_PTE_INFO_PARAMS *, RmPhysAddr *);  // inline virtual inherited (vaspace) base (vaspace) body
     NV_STATUS (*__iovaspaceSetPteInfo__)(struct OBJIOVASPACE * /*this*/, struct OBJGPU *, NV0080_CTRL_DMA_SET_PTE_INFO_PARAMS *);  // inline virtual inherited (vaspace) base (vaspace) body
@@ -411,8 +411,8 @@ static inline void iovaspaceUnpinRootPageDir_DISPATCH(struct OBJIOVASPACE *pVAS,
     pVAS->__nvoc_metadata_ptr->vtable.__iovaspaceUnpinRootPageDir__(pVAS, pGpu);
 }
 
-static inline void iovaspaceInvalidateTlb_DISPATCH(struct OBJIOVASPACE *pVAS, struct OBJGPU *pGpu, VAS_PTE_UPDATE_TYPE type) {
-    pVAS->__nvoc_metadata_ptr->vtable.__iovaspaceInvalidateTlb__(pVAS, pGpu, type);
+static inline NV_STATUS iovaspaceInvalidateTlb_DISPATCH(struct OBJIOVASPACE *pVAS, struct OBJGPU *pGpu, VAS_PTE_UPDATE_TYPE type) {
+    return pVAS->__nvoc_metadata_ptr->vtable.__iovaspaceInvalidateTlb__(pVAS, pGpu, type);
 }
 
 static inline NV_STATUS iovaspaceGetPageTableInfo_DISPATCH(struct OBJIOVASPACE *pVAS, NV0080_CTRL_DMA_GET_PDE_INFO_PARAMS *pParams) {

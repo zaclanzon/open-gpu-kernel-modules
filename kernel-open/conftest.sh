@@ -5085,6 +5085,25 @@ compile_test() {
             compile_check_conftest "$CODE" "NV_SHRINKER_ALLOC_PRESENT" "" "functions"
         ;;
 
+        nr_kernel_misc_reclaimable)
+            #
+            # Determine if NR_KERNEL_MISC_RECLAIMABLE is present in
+            # enum node_stat_item.
+            #
+            # Added by commit a4a33ef5657a ("mm: add NR_KERNEL_MISC_RECLAIMABLE
+            # node stat for misc reclaimable kernel memory") in v5.9.
+            #
+            CODE="
+            #include <linux/mmzone.h>
+
+            void conftest_nr_kernel_misc_reclaimable(void) {
+                enum node_stat_item x = NR_KERNEL_MISC_RECLAIMABLE;
+                (void)x;
+            }"
+
+            compile_check_conftest "$CODE" "NV_NR_KERNEL_MISC_RECLAIMABLE_PRESENT" "" "types"
+        ;;
+
         memory_device_coherent_present)
             #
             # Determine if MEMORY_DEVICE_COHERENT support is present or not
@@ -5136,6 +5155,22 @@ compile_test() {
             }"
 
             compile_check_conftest "$CODE" "NV_IS_VMA_WRITE_LOCKED_HAS_MM_LOCK_SEQ_ARG" "" "types"
+        ;;
+
+        drm_atomic_commit_struct_present)
+            #
+            # Determine if 'struct drm_atomic_state' has been renamed to
+            # 'struct drm_atomic_commit'.
+            #
+            # Renamed by commit 5164f7e7ff8e ("drm: Rename struct
+            # drm_atomic_state to drm_atomic_commit"), expected in Linux v7.2.
+            #
+            CODE="
+            #include <drm/drm_atomic.h>
+
+            struct drm_atomic_commit state;"
+
+            compile_check_conftest "$CODE" "NV_DRM_ATOMIC_COMMIT_STRUCT_PRESENT" "" "types"
         ;;
 
         # When adding a new conftest entry, please use the correct format for

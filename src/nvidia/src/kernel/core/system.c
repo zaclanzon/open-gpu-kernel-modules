@@ -807,6 +807,12 @@ sysInitRegistryOverrides_IMPL
         pSys->setProperty(pSys, PDB_PROP_SYS_ALLOW_UNKNOWN_4PART_IDS, !!data32);
     }
 
+    if (osReadRegistryDword(pGpu, NV_REG_STR_RM_EVENT_NOTIFY_ISR_OPT_BUG_6037246,
+                            &data32) == NV_OK)
+    {
+        pSys->setProperty(pSys, PDB_PROP_SYS_EVENT_NOTIFY_ISR_OPT_ENABLED, !!data32);
+    }
+
     if (osReadRegistryDword(pGpu, NV_REG_STR_RM_USE_RW_API_LOCK_GET_MEM_ALIGNMENT_BUG_5785851_WAR,
                             &data32) == NV_OK)
     {

@@ -307,6 +307,7 @@ virtmemConstruct_IMPL
     RmClient                    *pRmClient             = dynamicCast(pRsClient, RmClient);
     RsResourceRef               *pResourceRef          = pCallContext->pResourceRef;
     RsResourceRef               *pVASpaceRef           = NULL;
+    RsResourceRef               *pDeviceRef;
     NvU32                        gpuCacheAttrib;
     NV_STATUS                    status                = NV_OK;
     NvHandle                     hClient               = pCallContext->pClient->hClient;
@@ -339,6 +340,9 @@ virtmemConstruct_IMPL
 
         goto done;
     }
+
+    NV_ASSERT_OK_OR_RETURN(
+        refFindAncestorOfType(pResourceRef, classId(Device), &pDeviceRef));
 
     pVirtualMemory->hVASpace = RM_INVALID_VASPACE_HANDLE;
     pVirtualMemory->bAllowUnicastMapping = NV_FALSE;
@@ -490,7 +494,7 @@ virtmemConstruct_IMPL
         portMemSet(pFbAllocPageFormat, 0, sizeof(FB_ALLOC_PAGE_FORMAT));
         pFbAllocInfo->pageFormat = pFbAllocPageFormat;
 
-        memUtilsInitFBAllocInfo(pAllocRequest->pUserParams, pFbAllocInfo, hClient, hParent);
+        memUtilsInitFBAllocInfo(pAllocRequest->pUserParams, pFbAllocInfo, hClient, pDeviceRef->hResource);
 
         // Call memmgr to get memory.
         NV_CHECK_OK_OR_GOTO(status, LEVEL_SILENT,
@@ -1350,12 +1354,41 @@ virtmemMapTo_IMPL
         SLI_LOOP_START(SLI_LOOP_FLAGS_BC_ONLY | SLI_LOOP_FLAGS_IGNORE_REENTRANCY);
         {
             NvU32 perGpuKind = pteKind;
+            NvBool downgradeToUncompressed = NV_FALSE;
             if (tgtAddressSpace == ADDR_SYSMEM && !memmgrComprSupported(pMemoryManager, ADDR_SYSMEM))
             {
-                //
                 // If system memory does not support compression fallback to using
                 // the uncompressed version of the same kind.
+                NV_PRINTF(LEVEL_INFO,
+                          "downgrading pteKind 0x%x -> uncompressed since sysmem compression is unsupported "
+                          "(hClient=0x%x hDma=0x%x hMemory=0x%x tgtAS=%d)\n",
+                          perGpuKind, hClient, hVirtualMem,
+                          RES_GET_HANDLE(pSrcMemory),
+                          tgtAddressSpace);
+                downgradeToUncompressed = NV_TRUE;
+            }
+            else if (memmgrIsKindCompressible(pMemoryManager, perGpuKind) &&
+                     !memmgrIsKindCompressible(pMemoryManager, memdescGetPteKind(pSrcMemDesc)))
+            {
                 //
+                // Chosen or overriden pteKind is compressible, but the physical backing (pSrcMemDesc)
+                // carries an uncompressed kind — meaning the physical allocation has no comptag
+                // resources.  Downgrade to the uncompressed equivalent so the installed
+                // PTEs match the allocation semantics.
+                //
+                NV_PRINTF(LEVEL_INFO,
+                          "downgrading pteKind 0x%x -> uncompressed for "
+                          "PAGE_KIND_VIRTUAL mapping over uncompressed physical backing "
+                          "(hClient=0x%x hDma=0x%x hMemory=0x%x tgtAS=%d srcKind=0x%x)\n",
+                          perGpuKind, hClient, hVirtualMem,
+                          RES_GET_HANDLE(pSrcMemory),
+                          tgtAddressSpace,
+                          memdescGetPteKind(pSrcMemDesc));
+                downgradeToUncompressed = NV_TRUE;
+            }
+
+            if (downgradeToUncompressed)
+            {
                 perGpuKind = memmgrGetUncompressedKind_HAL(pGpu, pMemoryManager, perGpuKind, 0);
             }
             memdescSetPteKind(memdescGetMemDescFromGpu(pDmaMappingInfo->pMemDesc, pGpu), perGpuKind);

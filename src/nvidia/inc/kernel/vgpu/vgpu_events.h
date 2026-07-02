@@ -87,7 +87,7 @@ void vgpuService(OBJGPU *pGpu);
 
 extern OBJVGPU *NvVGPU_Table[NV_VGPU_MAX_INSTANCES];
 
-#define NV_VGPU_RPC_TIMEOUT_USEC(pGpu) (10 * 1000000)
+#define NV_VGPU_RPC_TIMEOUT_USEC(pGpu) NV_VGPU_RPC_TIMEOUT_DEFAULT_USEC
 
 struct _vgpu_last_surface_info
 {
@@ -188,6 +188,7 @@ struct _object_vgpu
     NvBool bECCSupported;
     /* Cache ECC status value in the Guest */
     NvBool bECCEnabled;
+    /* Cached CLK_GET_EXTENDED_INFO result (static for vGPU guests) */
     /* RPC fully initialized */
     NvBool bRpcInitialized;
     /* GSP buffers initialized */

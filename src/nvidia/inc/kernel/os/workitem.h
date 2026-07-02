@@ -66,6 +66,13 @@ typedef struct
     NvU32 bFullGpuSanity:1;
 
     NvU32 bDropOnUnloadQueueFlush:1;
+
+    //
+    // Do not use this flag. Any such code should probably move to state load
+    // Set ExpandedGpuVisibility for init threads that can run during init
+    // Such threads must not race with any operations that happen during state init
+    //
+    NvU32 bSetExpandedGpuVisibility:1;
 } OsQueueWorkItemFlags;
 
 typedef struct

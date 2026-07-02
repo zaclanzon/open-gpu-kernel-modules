@@ -2765,12 +2765,16 @@ kbusUpdateRmAperture_GM107
         SLI_LOOP_START(SLI_LOOP_FLAGS_BC_ONLY | SLI_LOOP_FLAGS_IGNORE_REENTRANCY)
         pKernelGmmu = GPU_GET_KERNEL_GMMU(pGpu);
         pKernelBus  = GPU_GET_KERNEL_BUS(pGpu);
-        kgmmuInvalidateTlb_HAL(pGpu, pKernelGmmu,
-                              pKernelBus->virtualBar2[gfid].pPDB,
-                              pKernelBus->virtualBar2[gfid].flags,
-                              PTE_DOWNGRADE, 0,
-                              NV_GMMU_INVAL_SCOPE_NON_LINK_TLBS,
-                              NV_FALSE);
+        {
+            NV_STATUS tlbStatus = kgmmuInvalidateTlb_HAL(pGpu, pKernelGmmu,
+                                      pKernelBus->virtualBar2[gfid].pPDB,
+                                      pKernelBus->virtualBar2[gfid].flags,
+                                      PTE_DOWNGRADE, 0,
+                                      NV_GMMU_INVAL_SCOPE_NON_LINK_TLBS,
+                                      NV_FALSE);
+            if (status == NV_OK)
+                status = tlbStatus;
+        }
         SLI_LOOP_END
         pKernelBus  = GPU_GET_KERNEL_BUS(pGpu);
     }
@@ -5773,10 +5777,14 @@ kbusCommitBar2_GM107
             // Kick out any entries associated w/ old PDB.
             osFlushCpuWriteCombineBuffer();
             kbusFlush_HAL(pGpu, pKernelBus, BUS_FLUSH_VIDEO_MEMORY);
-            kgmmuInvalidateTlb_HAL(pGpu, pKernelGmmu,
-                                   pKernelBus->virtualBar2[gfid].pPDB,
-                                   pKernelBus->virtualBar2[gfid].flags,
-                                   PTE_DOWNGRADE, 0, NV_GMMU_INVAL_SCOPE_NON_LINK_TLBS, NV_FALSE);
+            {
+                NV_STATUS tlbStatus = kgmmuInvalidateTlb_HAL(pGpu, pKernelGmmu,
+                                       pKernelBus->virtualBar2[gfid].pPDB,
+                                       pKernelBus->virtualBar2[gfid].flags,
+                                       PTE_DOWNGRADE, 0, NV_GMMU_INVAL_SCOPE_NON_LINK_TLBS, NV_FALSE);
+                if (tlbStatus != NV_OK)
+                    return tlbStatus;
+            }
             // Update the PDB pointer just before binding w/ the new page tables.
             pKernelBus->virtualBar2[gfid].pPDB = pKernelBus->bar2[gfid].pPDEMemDesc;
         }

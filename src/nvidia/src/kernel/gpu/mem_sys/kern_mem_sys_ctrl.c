@@ -42,6 +42,7 @@
 #include "vgpu/rpc.h"
 #include "rmapi/client.h"
 #include "platform/sli/sli.h"
+#include "os/os.h"
 
 NV_STATUS
 kmemsysGetFbInfos_VF(OBJGPU *pGpu, KernelMemorySystem *pKernelMemorySystem, RsClient *pClient, Device *pDevice, NvHandle hObject,
@@ -106,6 +107,11 @@ kmemsysGetFbInfos_VF(OBJGPU *pGpu, KernelMemorySystem *pKernelMemorySystem, RsCl
             case NV2080_CTRL_FB_INFO_INDEX_LTC_MASK_1:
             {
                 data = NvU64_HI32((NvU64)pVSI->ltcMask);
+                break;
+            }
+            case NV2080_CTRL_FB_INFO_INDEX_RAM_TYPE:
+            {
+                data = pVSI->memsysStaticConfig.ramType;
                 break;
             }
             case NV2080_CTRL_FB_INFO_INDEX_L2CACHE_SIZE:
@@ -595,6 +601,13 @@ _kmemsysGetFbInfos
                     NV_ASSERT(NvU64_HI32(size >> 10) == 0);
                     data = NvU64_LO32(size >> 10);
                 }
+                break;
+            }
+
+            case NV2080_CTRL_FB_INFO_INDEX_HEAP_RECLAIMABLE:
+            {
+                const NvU64 size = osGetReclaimableMemoryUsage();
+                data = NvU64_LO32(size >> 10);
                 break;
             }
 

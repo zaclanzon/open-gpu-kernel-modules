@@ -308,7 +308,7 @@ struct NVOC_VTABLE__OBJVASPACE {
     PMEMORY_DESCRIPTOR (*__vaspaceGetPageDirBase__)(struct OBJVASPACE * /*this*/, struct OBJGPU *);  // inline virtual body
     NV_STATUS (*__vaspacePinRootPageDir__)(struct OBJVASPACE * /*this*/, struct OBJGPU *);  // inline virtual body
     void (*__vaspaceUnpinRootPageDir__)(struct OBJVASPACE * /*this*/, struct OBJGPU *);  // inline virtual body
-    void (*__vaspaceInvalidateTlb__)(struct OBJVASPACE * /*this*/, struct OBJGPU *, VAS_PTE_UPDATE_TYPE);  // virtual
+    NV_STATUS (*__vaspaceInvalidateTlb__)(struct OBJVASPACE * /*this*/, struct OBJGPU *, VAS_PTE_UPDATE_TYPE);  // virtual
     NV_STATUS (*__vaspaceGetPageTableInfo__)(struct OBJVASPACE * /*this*/, NV0080_CTRL_DMA_GET_PDE_INFO_PARAMS *);  // inline virtual body
     NV_STATUS (*__vaspaceGetPteInfo__)(struct OBJVASPACE * /*this*/, struct OBJGPU *, NV0080_CTRL_DMA_GET_PTE_INFO_PARAMS *, RmPhysAddr *);  // inline virtual body
     NV_STATUS (*__vaspaceSetPteInfo__)(struct OBJVASPACE * /*this*/, struct OBJGPU *, NV0080_CTRL_DMA_SET_PTE_INFO_PARAMS *);  // inline virtual body
@@ -525,8 +525,8 @@ static inline void vaspaceUnpinRootPageDir_DISPATCH(struct OBJVASPACE *pVAS, str
     pVAS->__nvoc_metadata_ptr->vtable.__vaspaceUnpinRootPageDir__(pVAS, pGpu);
 }
 
-static inline void vaspaceInvalidateTlb_DISPATCH(struct OBJVASPACE *pVAS, struct OBJGPU *pGpu, VAS_PTE_UPDATE_TYPE type) {
-    pVAS->__nvoc_metadata_ptr->vtable.__vaspaceInvalidateTlb__(pVAS, pGpu, type);
+static inline NV_STATUS vaspaceInvalidateTlb_DISPATCH(struct OBJVASPACE *pVAS, struct OBJGPU *pGpu, VAS_PTE_UPDATE_TYPE type) {
+    return pVAS->__nvoc_metadata_ptr->vtable.__vaspaceInvalidateTlb__(pVAS, pGpu, type);
 }
 
 static inline NV_STATUS vaspaceGetPageTableInfo_DISPATCH(struct OBJVASPACE *pVAS, NV0080_CTRL_DMA_GET_PDE_INFO_PARAMS *pParams) {
@@ -621,7 +621,7 @@ static inline void vaspaceUnpinRootPageDir_af5be7(struct OBJVASPACE *pVAS, struc
     NV_ASSERT_PRECOMP(NV_FALSE);
 }
 
-void vaspaceInvalidateTlb_IMPL(struct OBJVASPACE *pVAS, struct OBJGPU *pGpu, VAS_PTE_UPDATE_TYPE type);
+NV_STATUS vaspaceInvalidateTlb_IMPL(struct OBJVASPACE *pVAS, struct OBJGPU *pGpu, VAS_PTE_UPDATE_TYPE type);
 
 static inline NV_STATUS vaspaceGetPageTableInfo_14ee5e(struct OBJVASPACE *pVAS, NV0080_CTRL_DMA_GET_PDE_INFO_PARAMS *pParams){
     NV_ASSERT_PRECOMP(NV_FALSE);

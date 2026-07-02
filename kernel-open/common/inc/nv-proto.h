@@ -49,6 +49,7 @@ void        nv_revoke_gpu_mappings_locked(nv_state_t *);
 
 NvUPtr      nv_vm_map_pages             (struct page **, NvU32, NvBool, NvBool);
 void        nv_vm_unmap_pages           (NvUPtr, NvU32);
+NvU64       nv_get_reclaimable_memory_usage(void);
 
 NV_STATUS   nv_alloc_contig_pages       (nv_state_t *, nv_alloc_t *);
 void        nv_free_contig_pages        (nv_alloc_t *);

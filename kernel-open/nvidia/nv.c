@@ -4023,7 +4023,7 @@ NV_STATUS NV_API_CALL nv_free_pages(
     NV_STATUS rmStatus = NV_OK;
     nv_alloc_t *at = priv_data;
 
-    nv_printf(NV_DBG_MEMINFO, "NVRM: VM: nv_free_pages: 0x%x\n", page_count);
+    nv_printf(NV_DBG_MEMINFO, "NVRM: VM: nv_free_pages: 0x%x at = %lx\n", page_count, (long int) at);
 
     NV_PRINT_AT(NV_DBG_MEMINFO, at);
 

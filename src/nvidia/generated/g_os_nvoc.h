@@ -309,7 +309,7 @@ NV_STATUS  NV_FORCERESULTCHECK osLockMem(MEMORY_DESCRIPTOR *);
 NV_STATUS  osUnlockMem(MEMORY_DESCRIPTOR *);
 NV_STATUS  NV_FORCERESULTCHECK osMapGPU(OBJGPU *, RS_PRIV_LEVEL, NvU64, NvU64, NvU32, NvP64 *, NvP64 *);
 void       osUnmapGPU(OS_GPU_INFO *, RS_PRIV_LEVEL, NvP64, NvU64, NvP64);
-NV_STATUS  NV_FORCERESULTCHECK osNotifyEvent(OBJGPU *, PEVENTNOTIFICATION, NvU32, NvU32, NV_STATUS);
+NV_STATUS  NV_FORCERESULTCHECK osNotifyEvent(OBJGPU *, PEVENTNOTIFICATION, NvU32, NvU32, NV_STATUS, NvBool);
 NV_STATUS  osReadRegistryString(OBJGPU *, const char *, NvU8 *, NvU32 *);
 NV_STATUS  osWriteRegistryBinary(OBJGPU *, const char *, NvU8 *, NvU32);
 NV_STATUS  osWriteRegistryVolatile(OBJGPU *, const char *, NvU8 *, NvU32);
@@ -1197,6 +1197,8 @@ static NV_INLINE NV_STATUS isrWrapper(NvBool testIntr, OBJGPU *pGpu)
 #define OS_PCIE_CAP_MASK_REQ_ATOMICS_32    NVBIT(0)
 #define OS_PCIE_CAP_MASK_REQ_ATOMICS_64    NVBIT(1)
 #define OS_PCIE_CAP_MASK_REQ_ATOMICS_128   NVBIT(2)
+
+NvU64 osGetReclaimableMemoryUsage(void);
 
 void osGetNumaMemoryUsage(NvS32 numaId, NvU64 *free_memory_bytes, NvU64 *total_memory_bytes);
 

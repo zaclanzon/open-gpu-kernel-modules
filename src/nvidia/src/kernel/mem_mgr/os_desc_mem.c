@@ -280,4 +280,3 @@ osdescCanCopy_IMPL
     // In case of MODS the caller is responsible for not freeing the memory.
     return (RMCFG_FEATURE_PLATFORM_UNIX || RMCFG_FEATURE_PLATFORM_MODS);
 }
-

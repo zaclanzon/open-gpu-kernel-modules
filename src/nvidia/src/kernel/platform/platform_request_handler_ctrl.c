@@ -307,7 +307,8 @@ pfmreqhndlrOperatingLimitUpdate_IMPL
                                  (OsQueueWorkItemFlags){
                                      .bLockSema = NV_TRUE,
                                      .apiLock = WORKITEM_FLAGS_API_LOCK_READ_WRITE,
-                                     .bLockGpus = NV_TRUE,});
+                                     .bLockGpus = NV_TRUE,
+                                     .bSetExpandedGpuVisibility = NV_TRUE});
 
         if (status != NV_OK)
         {
@@ -734,7 +735,8 @@ cliresCtrlCmdSystemPfmreqhndlrCtrl_IMPL
                     (OsQueueWorkItemFlags){
                         .bLockSema = NV_TRUE,
                         .apiLock = WORKITEM_FLAGS_API_LOCK_READ_WRITE,
-                        .bLockGpus = NV_TRUE,});
+                        .bLockGpus = NV_TRUE,
+                        .bSetExpandedGpuVisibility = NV_TRUE});
 
                 if (status == NV_OK)
                 {
@@ -1785,7 +1787,8 @@ pfmreqhndlrHandlePlatformSetEdppLimitInfo_IMPL
             (OsQueueWorkItemFlags){
              .bLockSema = NV_TRUE,
              .apiLock = WORKITEM_FLAGS_API_LOCK_READ_WRITE,
-             .bLockGpus = NV_TRUE,});
+             .bLockGpus = NV_TRUE,
+             .bSetExpandedGpuVisibility = NV_TRUE});
 
         // Sema, API, and all GPUs with RM_LOCK_MODULES_PFM_REQ_HNDLR
 

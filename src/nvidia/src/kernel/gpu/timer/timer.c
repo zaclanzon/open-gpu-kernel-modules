@@ -480,7 +480,7 @@ _nv0004CtrlCmdTmrSetAlarmNotifyCallback(OBJGPU *pGpu, OBJTMR *pTmr, TMR_EVENT *p
     if (NvP64_VALUE(pNotifyEvent->Data) != NULL)
     {
         //one shot signal
-        status = osNotifyEvent(pGpu, pNotifyEvent, NV004_NOTIFIERS_SET_ALARM_NOTIFY, 0, NV_OK);
+        status = osNotifyEvent(pGpu, pNotifyEvent, NV004_NOTIFIERS_SET_ALARM_NOTIFY, 0, NV_OK, NV_TRUE);
         if (status != NV_OK)
         {
             NV_PRINTF(LEVEL_ERROR, "failed to notify event in callback, status: 0x%08x\n", status);

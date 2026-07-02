@@ -287,6 +287,9 @@ static NV_STATUS _gpuEngineEventNotificationListNotify
     PendingEventNotifyList *pPending =
         &pEventNotificationList->pendingEventNotifyList;
     ENGINE_EVENT_NOTIFICATION *pIter, *pTail;
+    OBJSYS    *pSys = SYS_GET_INSTANCE();
+    NvBool     bDoRefCount =
+        !pSys->getProperty(pSys, PDB_PROP_SYS_EVENT_NOTIFY_ISR_OPT_ENABLED);
 
     //
     // Acquire engine list spinlock before traversing the list. Note that this
@@ -409,7 +412,7 @@ static NV_STATUS _gpuEngineEventNotificationListNotify
 
         while (pendingNotifyCount--)
             NV_ASSERT_OK_OR_CAPTURE_FIRST_ERROR(status,
-                osNotifyEvent(pGpu, pIter->pEventNotify, 0, 0, NV_OK));
+                osNotifyEvent(pGpu, pIter->pEventNotify, 0, 0, NV_OK, bDoRefCount));
 
         if (pIter == pTail)
             break;
@@ -749,11 +752,25 @@ NV_STATUS registerEventNotification
 free_entry:
     if (rmStatus != NV_OK)
     {
+        OBJSYS *pSys = SYS_GET_INSTANCE();
+
         rmTmpStatus = _removeEventNotification(ppEventNotification, hEventClient,
                 hEvent, NV_TRUE, Data, &pTargetEvent);
 
         if (rmTmpStatus == NV_OK)
+        {
+            //
+            // Only the ISR optimization path defers the deref to here. With
+            // the legacy path, _removeEventNotification has already dropped
+            // the reference inside.
+            //
+            if (pSys->getProperty(pSys, PDB_PROP_SYS_EVENT_NOTIFY_ISR_OPT_ENABLED) &&
+                pTargetEvent->bUserOsEventHandle)
+            {
+                osDereferenceObjectCount(NvP64_VALUE(pTargetEvent->Data));
+            }
             portMemFree(pTargetEvent);
+        }
     }
 
 failed_insert:
@@ -947,6 +964,20 @@ NV_STATUS unregisterEventNotificationWithData
     }
 
 free_entry:
+    {
+        OBJSYS *pSys = SYS_GET_INSTANCE();
+
+        //
+        // Only the ISR optimization path defers the deref to here. With the
+        // legacy path, _removeEventNotification has already dropped the
+        // reference inside.
+        //
+        if (pSys->getProperty(pSys, PDB_PROP_SYS_EVENT_NOTIFY_ISR_OPT_ENABLED) &&
+            pTargetEvent->bUserOsEventHandle)
+        {
+            osDereferenceObjectCount(NvP64_VALUE(pTargetEvent->Data));
+        }
+    }
     portMemFree(pTargetEvent);
 
 error:
@@ -1004,6 +1035,8 @@ static NV_STATUS _removeEventNotification
     // delete the event if it was found
     if (found)
     {
+        OBJSYS *pSys = SYS_GET_INSTANCE();
+
         if (nextEvent->pTmrEvent != NULL)
         {
             NV_ASSERT_OR_RETURN((nextEvent->pGpu != NULL), NV_ERR_INVALID_STATE);
@@ -1013,8 +1046,17 @@ static NV_STATUS _removeEventNotification
             nextEvent->pTmrEvent = NULL;
         }
 
-        if (nextEvent->bUserOsEventHandle)
+        //
+        // Legacy behavior (registry disabled): drop the permanent OS event
+        // reference here. When the ISR optimization is enabled, the deref is
+        // performed by the caller after the engine notification list removal
+        // so the ISR can never see a freed nv_event_t.
+        //
+        if (!pSys->getProperty(pSys, PDB_PROP_SYS_EVENT_NOTIFY_ISR_OPT_ENABLED) &&
+            nextEvent->bUserOsEventHandle)
+        {
             osDereferenceObjectCount(NvP64_VALUE(nextEvent->Data));
+        }
 
         *ppOldEvent = nextEvent;
     }
@@ -1069,13 +1111,13 @@ NV_STATUS notifyEvents
                         //
                         if (++NotifyEvent->NotifyTriggerCount == NumSubDevices(pGpu))
                         {
-                            rmStatus = osNotifyEvent(pGpu, NotifyEvent, Method, Data, Status);
+                            rmStatus = osNotifyEvent(pGpu, NotifyEvent, Method, Data, Status, NV_TRUE);
                             NotifyEvent->NotifyTriggerCount = 0x0;
                         }
                     }
                     else
                     {
-                        rmStatus = osNotifyEvent(pGpu, NotifyEvent, Method, Data, Status);
+                        rmStatus = osNotifyEvent(pGpu, NotifyEvent, Method, Data, Status, NV_TRUE);
                     }
                 }
             }

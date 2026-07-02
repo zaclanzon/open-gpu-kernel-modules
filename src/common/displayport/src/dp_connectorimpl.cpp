@@ -178,6 +178,7 @@ void ConnectorImpl::applyRegkeyOverrides(const DP_REGKEY_DATABASE& dpRegkeyDatab
               "All regkeys are invalid because dpRegkeyDatabase is not initialized!");
 
     this->bSkipAssessLinkForEDP = dpRegkeyDatabase.bAssesslinkForEdpSkipped;
+    this->bSkipPanelPowerWrite  = dpRegkeyDatabase.bSkipPanelPowerWrite;
 
     //
     // Default bHdcpAuthOnlyOnDemand, bMstRestoreHdcpStateAtAttach are true
@@ -225,6 +226,7 @@ void ConnectorImpl::applyRegkeyOverrides(const DP_REGKEY_DATABASE& dpRegkeyDatab
     this->bEnable128b132bDSCLnkCfgReduction  = dpRegkeyDatabase.bEnable128b132bDSCLnkCfgReduction;
     this->bDisableNativeDisplayId2xSupport   = dpRegkeyDatabase.bDisableNativeDisplayId2xSupport;
     this->bIgnoreUnplugUnlessRequested       = dpRegkeyDatabase.bIgnoreUnplugUnlessRequested;
+    this->bSetConnectorHdmiForDongle         = dpRegkeyDatabase.bSetConnectorHdmiForDongle;
 }
 
 void ConnectorImpl::setPolicyModesetOrderMitigation(bool enabled)
@@ -499,6 +501,11 @@ void ConnectorImpl::processNewDevice(const ProcessNewDeviceParams &params)
         case DISPLAY_PORT_PLUSPLUS: // DP port that supports DP and TMDS
             if (existingDev &&
                 existingDev->connectorType == connectorHDMI)
+            {
+                connector = connectorHDMI;
+            }
+            else if(bSetConnectorHdmiForDongle &&
+                    device.peerDevice == Dongle)
             {
                 connector = connectorHDMI;
             }
@@ -7313,7 +7320,6 @@ void ConnectorImpl::disconnectDeviceList()
         {
             delete ((DeviceImpl*)d)->deviceHDCPDetection;
             ((DeviceImpl*)d)->deviceHDCPDetection = NULL;
-            ((DeviceImpl*)d)->isHDCPCap = False;
         }
     }
 }
@@ -7729,7 +7735,16 @@ void ConnectorImpl::notifyLongPulseInternal(bool statusConnected)
             else
             {
                 dev.peerDevice = DownstreamSink;
-                if (hal->isAtLeastVersion(1, 4) && !bDisableNativeDisplayId2xSupport)
+                bool bIsDpToHdmiDongle = false;
+                if (hal->getLegacyPortCount() != 0)
+                {
+                    LegacyPort * port = hal->getLegacyPort(0);
+                    bIsDpToHdmiDongle = (port->getDownstreamPortType() == HDMI);
+                }
+
+                if (hal->isAtLeastVersion(1, 4) &&
+                    !bIsDpToHdmiDongle &&
+                    !bDisableNativeDisplayId2xSupport)
                 {
                     DisplayId2ReadSST(tmpDid2x, auxBus, timer, main);
                 }
@@ -8814,10 +8829,24 @@ bool ConnectorImpl::updatePsrLinkState(bool bTurnOnLink)
 {
     bool bRet = true;
     bool bEnteredFlushMode = false;
+    bool bSetPanelPower = true;
 
     if (bTurnOnLink)
     {
-        hal->setPowerState(PowerStateD0);
+        //
+        // If we are skipping panel power write when the regkey is set and the
+        // panel is already in D0, then we don't need to set it to D0.
+        //
+        if (this->bSkipPanelPowerWrite &&
+            (hal->getPowerState() == PowerStateD0))
+        {
+            bSetPanelPower = false;
+        }
+
+        if (bSetPanelPower)
+        {
+            hal->setPowerState(PowerStateD0);
+        }
 
         if (isLinkLost())
         {

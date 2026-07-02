@@ -359,7 +359,7 @@ typedef struct nv_event_s
     NvU16               info16;
     nv_file_private_t  *nvfp;  /* per file-descriptor data pointer */
     NvU32               fd;
-    NvBool              active; /* whether the event should be signaled */
+    PORT_ATOMIC NvS32   active; /* whether the event should be signaled */
     NvU32               refcount; /* count of associated RM events */
     struct nv_event_s  *next;
 } nv_event_t;
@@ -968,9 +968,9 @@ void      NV_API_CALL   nv_unregister_sgt        (nv_state_t *, struct sg_table 
 NV_STATUS NV_API_CALL   nv_register_phys_pages   (nv_state_t *, NvU64 *, NvU64, NvU32, void **);
 void      NV_API_CALL   nv_unregister_phys_pages (nv_state_t *, void *);
 
-NV_STATUS  NV_API_CALL  nv_dma_map_sgt           (nv_dma_device_t *, NvU64, NvU64 *, NvU32, void **);
+NV_STATUS  NV_API_CALL  nv_dma_map_sgt           (nv_dma_device_t *, NvU64, NvU64 *, NvU32, NvBool, void **);
 
-NV_STATUS  NV_API_CALL  nv_dma_map_alloc         (nv_dma_device_t *, NvU64, NvU64 *, NvBool, void **);
+NV_STATUS  NV_API_CALL  nv_dma_map_alloc         (nv_dma_device_t *, NvU64, NvU64 *, NvBool, NvBool, void **);
 NV_STATUS  NV_API_CALL  nv_dma_unmap_alloc       (nv_dma_device_t *, NvU64, NvU64 *, void **);
 
 NV_STATUS  NV_API_CALL  nv_dma_map_peer          (nv_dma_device_t *, nv_dma_device_t *, NvU8, NvU64, NvU64 *);

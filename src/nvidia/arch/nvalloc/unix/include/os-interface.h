@@ -220,6 +220,7 @@ enum os_pci_req_atomics_type {
 };
 NV_STATUS   NV_API_CALL  os_enable_pci_req_atomics   (void *, enum os_pci_req_atomics_type);
 void        NV_API_CALL  os_pci_trigger_flr(void *handle);
+NvU64       NV_API_CALL  os_get_reclaimable_memory_usage(void);
 NV_STATUS   NV_API_CALL  os_get_numa_node_memory_usage (NvS32, NvU64 *, NvU64 *);
 NV_STATUS   NV_API_CALL  os_numa_add_gpu_memory      (void *, NvU64, NvU64, NvU32 *);
 NV_STATUS   NV_API_CALL  os_numa_remove_gpu_memory   (void *, NvU64, NvU64, NvU32); 

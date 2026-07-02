@@ -179,7 +179,8 @@ eventapiConstruct_IMPL
                 rmStatus = osUserHandleToKernelPtr(pRsClient->hClient,
                                                    pNv0050AllocParams->data,
                                                    &pNv0050AllocParams->data);
-                bUserOsEventHandle = NV_TRUE;
+                if (rmStatus == NV_OK)
+                    bUserOsEventHandle = NV_TRUE;
             }
         }
 
@@ -609,7 +610,7 @@ void CliAddSystemEvent(
                         }
                     }
 
-                    if (osNotifyEvent(NULL, pEventNotification, 0, 0, 0) != NV_OK)
+                    if (osNotifyEvent(NULL, pEventNotification, 0, 0, 0, NV_TRUE) != NV_OK)
                     {
                         if (pEventData != NULL)
                             eventSystemDequeueEventLatest(&pClient->CliSysEventInfo.eventQueue);

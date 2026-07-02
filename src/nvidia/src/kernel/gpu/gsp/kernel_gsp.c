@@ -577,7 +577,7 @@ _kgspRpcPostEvent
             if (pNotifyEvent->hEvent == rpc_params->hEvent)
             {
                 NV_ASSERT_OK_OR_RETURN(osNotifyEvent(pGpu,
-                    pNotifyEvent, 0, rpc_params->data, rpc_params->status));
+                    pNotifyEvent, 0, rpc_params->data, rpc_params->status, NV_TRUE));
                 break;
             }
         }
@@ -1438,6 +1438,7 @@ _kgspProcessRpcEvent
             case NV_VGPU_MSG_EVENT_GSP_POST_NOCAT_RECORD:
             case NV_VGPU_MSG_EVENT_GSP_INIT_DONE:
             case NV_VGPU_MSG_EVENT_OS_ERROR_LOG:
+            case NV_VGPU_MSG_EVENT_PFM_REQ_HNDLR_STATE_SYNC_CALLBACK:
             case NV_VGPU_MSG_EVENT_GSP_LOAD_EXEC_GENERIC_BOOTLOADER:
             case NV_VGPU_MSG_EVENT_GSP_LOAD_EXEC_HS_BINARY:
                 break;

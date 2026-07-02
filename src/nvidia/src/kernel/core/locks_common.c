@@ -134,6 +134,12 @@ workItemLocksAcquire(NvU32 gpuInstance, OsQueueWorkItemFlags flags, OsQueueWorkI
     *pReleaseLocks = (OsQueueWorkItemFlags){0};
     *pGpuMask = 0;
 
+    if (flags.bSetExpandedGpuVisibility)
+    {
+        gpumgrThreadEnableExpandedGpuVisibility();
+        pReleaseLocks->bSetExpandedGpuVisibility = NV_TRUE;
+    }
+
     if (flags.bLockSema)
     {
         status = osAcquireRmSema(pSys->pSema);
@@ -224,6 +230,11 @@ workItemLocksRelease(OsQueueWorkItemFlags releaseLocks, NvU32 gpuMask)
     if (releaseLocks.bLockSema)
     {
         osReleaseRmSema(pSys->pSema, NULL);
+    }
+
+    if (releaseLocks.bSetExpandedGpuVisibility)
+    {
+        gpumgrThreadDisableExpandedGpuVisibility();
     }
 }
 

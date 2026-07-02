@@ -1146,10 +1146,11 @@ static void nvGpuOpsRmDeviceDestroy(struct gpuDevice *device)
 
         portSyncRwLockAcquireWrite(session->devicesLock);
         deleteDescriptor(&session->devices, deviceKey, (void**)&rmDevice);
+        portSyncRwLockReleaseWrite(session->devicesLock);
+
         pRmApi->Free(pRmApi, session->handle, rmDevice->deviceHandle);
         portSyncRwLockDestroy(rmDevice->btreeLock);
         portMemFree(rmDevice);
-        portSyncRwLockReleaseWrite(session->devicesLock);
     }
 }
 

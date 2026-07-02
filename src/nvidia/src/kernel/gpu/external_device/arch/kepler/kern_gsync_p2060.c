@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 1993-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: Copyright (c) 1993-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -33,6 +33,16 @@
 #include "kernel/gpu/i2c/i2c_api.h"
 #include "platform/sli/sli.h"
 #include "nvmisc.h"
+
+//
+// Bug 5656425: Poll parameters used in gsyncProgramMaster_P2060() to wait for
+// the FPGA GPU sync period (NV_P2060_FRAMERATE 0x10-0x12) to clear after
+// I_AM_MASTER is deasserted. The fixed 200ms osDelay (Bug 1053022) is
+// insufficient at higher refresh rates (120Hz+).
+//
+#define NV_P2060_FRAMERATE_POLL_MAX_RETRIES   10U
+#define NV_P2060_FRAMERATE_POLL_INTERVAL_MS   50U
+
 /*
  * statics
  */
@@ -2510,6 +2520,53 @@ gsyncProgramMaster_P2060
         // reflect state-change in other registers e.g portStat, Frame Rate etc. Refer Bug 1053022.
         //
         osDelay(200);
+
+        //
+        // Bug 5656425: After disabling master, poll until the FPGA GPU sync period
+        // registers (NV_P2060_FRAMERATE 0x10-0x12) clear. The fixed 200ms delay
+        // (Bug 1053022) is insufficient at higher refresh rates (120Hz+). Stale
+        // frame rate causes validateGsyncRefreshRateState() to falsely detect a
+        // multiple-master condition, preventing framelock persistence after reboot.
+        //
+        if (!bEnableMaster)
+        {
+            NvU32     framerate   = 0U;
+            NvU32     maxRetries  = NV_P2060_FRAMERATE_POLL_MAX_RETRIES;
+            NvU32     retries     = maxRetries;
+            NV_STATUS pollStatus  = NV_OK;
+
+            do
+            {
+                pollStatus = gsyncReadFrameRate_P2060(pGpu,
+                                                     (PDACEXTERNALDEVICE)pThis,
+                                                     &framerate);
+                if (pollStatus != NV_OK)
+                {
+                    NV_PRINTF(LEVEL_ERROR,
+                              "Failed to read FPGA frame rate. status=0x%x\n",
+                              pollStatus);
+                    break;
+                }
+                if (framerate == 0U)
+                {
+                    break;
+                }
+                osDelay(NV_P2060_FRAMERATE_POLL_INTERVAL_MS);
+            } while (--retries > 0U);
+
+            if ((pollStatus == NV_OK) && (framerate != 0U))
+            {
+                NV_PRINTF(LEVEL_ERROR,
+                          "FPGA frame rate did not clear. framerate=%u\n",
+                          framerate);
+            }
+            else if (pollStatus == NV_OK)
+            {
+                NV_PRINTF(LEVEL_INFO,
+                          "FPGA frame rate cleared after %u attempt(s).\n",
+                          (maxRetries - retries) + 1U);
+            }
+        }
 
         if (bEnableMaster)
         {

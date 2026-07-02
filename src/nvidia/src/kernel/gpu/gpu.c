@@ -2370,6 +2370,14 @@ gpuStateInit_IMPL
             {
                 pGpu->setProperty(pGpu, PDB_PROP_GPU_BUG_3007008_EMULATE_VF_MMU_TLB_INVALIDATE, NV_FALSE);
             }
+
+            // Registry override to change default mode, i.e, enable N:1 vGPU for 64K pagesize
+            data32 = NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_DEFAULT;
+            if ((osReadRegistryDword(pGpu, NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE, &data32) == NV_OK) &&
+                (data32 == NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_YES))
+            {
+                pGpu->setProperty(pGpu, PDB_PROP_GPU_BUG_3007008_EMULATE_VF_MMU_TLB_INVALIDATE, NV_FALSE);
+            }
         }
         else
         {

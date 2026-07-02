@@ -488,9 +488,20 @@ _kbusRemoveNvlinkPeerMapping
     //    reach 0 until both the peer ids are removed. In this case,
     //    busNvlinkMappingRefcountPerPeerId[peerId] == 0 check is required to
     //    remove the peer id from busNvlinkPeerNumberMask[peerGpuInst].
+    //    Similarly, when busNvlinkMappingRefcountPerGpu[peerGpuInst] does reach 0,
+    //    we must remove both/all peers from busNvlinkPeerNumberMask[peerGpuInst].
+    //    See bug 6088482 for more details of this sequence.
     //
-    if (pKernelBus0->p2p.busNvlinkMappingRefcountPerGpu[peerGpuInst] == 0 ||
-        pKernelBus0->p2p.busNvlinkMappingRefcountPerPeerId[peerId] == 0)
+
+    if (pKernelBus0->p2p.busNvlinkMappingRefcountPerGpu[peerGpuInst] == 0)
+    {
+        NV_PRINTF(LEVEL_INFO,
+                  "Removing all remaining peer mappings for GPU%u to GPU%u (0x%x)\n",
+                  gpuGetInstance(pGpu0), peerGpuInst, pKernelBus0->p2p.busNvlinkPeerNumberMask[peerGpuInst]);
+
+        pKernelBus0->p2p.busNvlinkPeerNumberMask[peerGpuInst] = 0;
+    }
+    else if (pKernelBus0->p2p.busNvlinkMappingRefcountPerPeerId[peerId] == 0)
     {
         NV_PRINTF(LEVEL_INFO,
                   "Removing mapping for GPU%u peer %u (GPU%u)\n",

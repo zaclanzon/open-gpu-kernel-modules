@@ -907,7 +907,8 @@ _pfmreqhndlrThermPmuPostInitPrereqCallback
                                  (OsQueueWorkItemFlags){
                                      .bLockSema = NV_TRUE,
                                      .apiLock = WORKITEM_FLAGS_API_LOCK_READ_WRITE,
-                                     .bLockGpus = NV_TRUE,});
+                                     .bLockGpus = NV_TRUE,
+                                     .bSetExpandedGpuVisibility = NV_TRUE});
 
         // We need this to succeed so that we don't have a recursive GSP RPC.
         NV_ASSERT_OK(status);
@@ -1030,7 +1031,8 @@ _pfmreqhndlrPmgrPmuPostLoadPrereqCallback
                                  (OsQueueWorkItemFlags){
                                      .bLockSema = NV_TRUE,
                                      .apiLock = WORKITEM_FLAGS_API_LOCK_READ_WRITE,
-                                     .bLockGpus = NV_TRUE,});
+                                     .bLockGpus = NV_TRUE,
+                                     .bSetExpandedGpuVisibility = NV_TRUE});
 
         // We need this to succeed so that we don't have a recursive GSP RPC.
         NV_ASSERT_OK(status);

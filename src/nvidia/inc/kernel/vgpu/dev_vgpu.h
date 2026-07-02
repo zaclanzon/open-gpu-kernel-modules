@@ -320,6 +320,10 @@ typedef union {
 /* GSP Control buffer shared between Guest RM and GSP Plugin - END            */
 /******************************************************************************/
 
+// vGPU RPC timeouts shared between Guest RM and GSP
+#define NV_VGPU_RPC_TIMEOUT_DEFAULT_USEC    12500000u                        // 12.5s
+#define NV_VGPU_RPC_TIMEOUT_EMU_USEC        (2700u * 1000u * 1000u)          // 2700s
+
 // VGPU GSP dirty sysmem tracking pfn format
 #define VGPU_GSP_SYSMEM_PFN_BITMAP_BUF_ADDR_VALIDITY                         0:0
 #define VGPU_GSP_SYSMEM_PFN_BITMAP_BUF_ADDR_VALIDITY_INVALID          0x00000000

@@ -346,7 +346,7 @@ void dceclientHandleAsyncRpcCallback
                     if (pNotifyEvent->hEvent == rpc_params->hEvent)
                     {
                         nvStatus = osNotifyEvent(pGpu, pNotifyEvent, 0,
-                                   rpc_params->data, rpc_params->status);
+                                   rpc_params->data, rpc_params->status, NV_TRUE);
                         if (nvStatus != NV_OK)
                             NV_PRINTF(LEVEL_ERROR, "osNotifyEvent failed with status: %x\n",nvStatus);
                         break;

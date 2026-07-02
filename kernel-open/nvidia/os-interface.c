@@ -2306,6 +2306,11 @@ NV_STATUS NV_API_CALL os_tegra_igpu_perf_boost
 #endif
 }
 
+NvU64 NV_API_CALL os_get_reclaimable_memory_usage(void)
+{
+    return nv_get_reclaimable_memory_usage();
+}
+
 /*
  * Reads the total memory and free memory of a NUMA node from the kernel.
  */

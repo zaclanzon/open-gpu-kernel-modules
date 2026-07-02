@@ -2216,6 +2216,17 @@
 #define NV_REG_STR_BUG_3007008_EMULATE_VF_MMU_TLB_INVALIDATE_DISABLE    0x00000000
 #define NV_REG_STR_BUG_3007008_EMULATE_VF_MMU_TLB_INVALIDATE_DEFAULT    NV_REG_STR_BUG_3007008_EMULATE_VF_MMU_TLB_INVALIDATE_ENABLE
 
+//
+// TYPE Dword
+// Determines whether or not to enable N:1 vGPU with 64K pagesize
+// Encoding : 0 - Do not enable N:1 vGPU (Default)
+//          : 1 - Enable N:1 vGPU
+//
+#define NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE                "RmEnableVgpu64kPageSize"
+#define NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_NO             0x00000000
+#define NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_YES            0x00000001
+#define NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_DEFAULT        NV_REG_STR_ENABLE_VGPU_64K_PAGE_SIZE_NO
+
 #define NV_REG_STR_RM_POWER_FEATURES                        "RMPowerFeature"
 
 // Type DWORD
@@ -3257,6 +3268,26 @@
 #define NV_REG_STR_RM_GSP_TRACE_CRASH_LOGGING_BUFFER_SIZE_DEFAULT 50
 #define NV_REG_STR_RM_GSP_TRACE_CRASH_LOGGING_BUFFER_SIZE_MIN     10
 #define NV_REG_STR_RM_GSP_TRACE_CRASH_LOGGING_BUFFER_SIZE_MAX     10000
+
+//
+// Type: DWORD
+// Regkey to enable the ISR event notification spinlock optimization
+// (bug 6037246). When enabled, only the ISR notification path calls
+// postEvent without the per-notification osReferenceObjectCount/
+// osDereferenceObjectCount pair, and the permanent reference is dropped
+// after the engine notification list removal in
+// unregisterEventNotificationWithData. All other postEvent paths keep
+// the legacy spinlock-protected refcount. When disabled (default), the
+// legacy behavior is used for all paths.
+//
+//   0 - Disable/Default - Legacy behavior (per-ISR refcount under spinlock).
+//   1 - Enable          - ISR fast path skips refcount; deref moved out
+//                         of _removeEventNotification to its callers.
+//
+#define NV_REG_STR_RM_EVENT_NOTIFY_ISR_OPT_BUG_6037246            "RmEventNotifyIsrOpt"
+#define NV_REG_STR_RM_EVENT_NOTIFY_ISR_OPT_BUG_6037246_DISABLE    0x00000000
+#define NV_REG_STR_RM_EVENT_NOTIFY_ISR_OPT_BUG_6037246_ENABLE     0x00000001
+#define NV_REG_STR_RM_EVENT_NOTIFY_ISR_OPT_BUG_6037246_DEFAULT    NV_REG_STR_RM_EVENT_NOTIFY_ISR_OPT_BUG_6037246_DISABLE
 
 //
 // Enable WAR for bug 4686457 which will flush CPU cache of page tables

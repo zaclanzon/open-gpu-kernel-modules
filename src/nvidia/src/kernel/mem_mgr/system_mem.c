@@ -656,6 +656,10 @@ sysmemInitAllocRequest_HMM
     FB_ALLOC_INFO               *pFbAllocInfo       = NULL;
     FB_ALLOC_PAGE_FORMAT        *pFbAllocPageFormat = NULL;
     NV_STATUS                    status             = NV_OK;
+    RsResourceRef               *pDeviceRef;
+
+    NV_ASSERT_OK_OR_RETURN(
+        refFindAncestorOfType(RES_GET_REF(pSystemMemory), classId(Device), &pDeviceRef));
 
     pFbAllocInfo = portMemAllocNonPaged(sizeof(FB_ALLOC_INFO));
     NV_ASSERT_TRUE_OR_GOTO(status, pFbAllocInfo != NULL, NV_ERR_NO_MEMORY, done);
@@ -667,7 +671,7 @@ sysmemInitAllocRequest_HMM
     portMemSet(pFbAllocPageFormat, 0, sizeof(FB_ALLOC_PAGE_FORMAT));
     pFbAllocInfo->pageFormat = pFbAllocPageFormat;
 
-    memUtilsInitFBAllocInfo(pAllocRequest->pUserParams, pFbAllocInfo, pAllocRequest->hClient, pAllocRequest->hParent);
+    memUtilsInitFBAllocInfo(pAllocRequest->pUserParams, pFbAllocInfo, pAllocRequest->hClient, pDeviceRef->hResource);
 
     NV_CHECK_OK_OR_GOTO(status, LEVEL_ERROR,
         memmgrAllocResources(pGpu, pMemoryManager, pAllocRequest, pFbAllocInfo),

@@ -78,7 +78,6 @@
 #include <linux/pci-ats.h>
 #endif
 
-extern int NVreg_GrdmaPciTopoCheckOverride;
 extern int NVreg_ExcludeAllGpus;
 
 static void
@@ -1485,6 +1484,14 @@ nv_pci_tegra_devfreq_remove(struct nv_pci_tegra_devfreq_dev *tdev)
     struct thermal_zone_device *tzdev;
 #endif
 
+#if defined(NV_UPDATE_DEVFREQ_PRESENT)
+    if (tdev->boost_enabled)
+    {
+        tdev->boost_enabled = 0;
+        cancel_delayed_work_sync(&tdev->boost_disable);
+    }
+#endif
+
     if (tdev->devfreq != NULL)
     {
 #if NV_HAS_COOLING_SUPPORTED
@@ -1499,8 +1506,8 @@ nv_pci_tegra_devfreq_remove(struct nv_pci_tegra_devfreq_dev *tdev)
             thermal_unbind_cdev_from_trip(tzdev, data->passive_trip, tdev->devfreq->cdev);
         }
 #endif
-        devm_devfreq_remove_device(&tdev->dev, tdev->devfreq);
         nv_pci_tegra_devfreq_remove_opps(tdev);
+        devm_devfreq_remove_device(&tdev->dev, tdev->devfreq);
         tdev->devfreq = NULL;
     }
 
@@ -1539,7 +1546,7 @@ nv_pci_tegra_devfreq_remove(struct nv_pci_tegra_devfreq_dev *tdev)
 
     if (tdev->clk != NULL)
     {
-        devm_clk_put(tdev->dev.parent, tptr->clk);
+        devm_clk_put(tdev->dev.parent, tdev->clk);
         tdev->clk = NULL;
         device_unregister(&tdev->dev);
     }
@@ -2660,7 +2667,9 @@ nv_pci_count_devices(void)
 /*
  * On coherent platforms that support BAR1 mappings for GPUDirect RDMA,
  * dma-buf and nv-p2p subsystems need to ensure the 2 devices belong to
- * the same IOMMU group.
+ * the same IOMMU group. If the importer device doesn't have an IOMMU
+ * group assigned, at least check if the GPU and importer are under the same
+ * root port.
  */
 NvBool nv_pci_is_valid_topology_for_direct_pci(
     nv_state_t     *nv,
@@ -2675,7 +2684,13 @@ NvBool nv_pci_is_valid_topology_for_direct_pci(
         return NV_FALSE;
     }
 
-    return (pdev0->dev.iommu_group == pdev1->dev.iommu_group);
+    if (pdev0->dev.iommu_group == pdev1->dev.iommu_group)
+        return NV_TRUE;
+
+    if (pdev1->dev.iommu_group == NULL)
+        return nv_pci_has_common_pci_switch(nv, peer);
+
+    return NV_FALSE;
 }
 
 NvBool nv_pci_has_common_pci_switch(
@@ -2717,16 +2732,6 @@ NvBool NV_API_CALL nv_grdma_pci_topology_supported(
     if (nv->coherent)
     {
         return NV_TRUE;
-    }
-
-    switch (NVreg_GrdmaPciTopoCheckOverride)
-    {
-        case NV_REG_GRDMA_PCI_TOPO_CHECK_OVERRIDE_ALLOW_ACCESS:
-            return NV_TRUE;
-        case NV_REG_GRDMA_PCI_TOPO_CHECK_OVERRIDE_DENY_ACCESS:
-            return NV_FALSE;
-        default:
-            break;
     }
 
     // Allow RDMA by default on passthrough VMs.

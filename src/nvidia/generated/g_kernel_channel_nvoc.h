@@ -1592,6 +1592,7 @@ NV_STATUS kchannelGetNotifierInfo(struct OBJGPU *pGpu,
                                   NvHandle hErrorContext,
                                   MEMORY_DESCRIPTOR **ppMemDesc,
                                   ErrorNotifierType *pNotifierType,
+                                  RsResourceRef **ppNotifierRef,
                                   NvU64 *pOffset);
 
 // Utils to iterate over ChannelDescendants on one Channels

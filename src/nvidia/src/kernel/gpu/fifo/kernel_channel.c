@@ -137,7 +137,10 @@ kchannelConstruct_IMPL
     RmClient               *pRmClient        = NULL;
     RsResourceRef          *pResourceRef     = pCallContext->pResourceRef;
     RsResourceRef          *pKernelCtxShareRef = NULL;
+    RsResourceRef          *pErrorContextRef = NULL;
+    RsResourceRef          *pEccErrorContextRef = NULL;
     NV_STATUS               status;
+    NV_STATUS               notifierStatus;
     RM_API                 *pRmApi           = NULL;
     NvHandle                hClient          = pRsClient->hClient;
     NvHandle                hParent          = pResourceRef->pParentRef->hResource;
@@ -517,13 +520,18 @@ kchannelConstruct_IMPL
     }
     else if (!(RMCFG_FEATURE_PLATFORM_GSP && !pKernelChannel->bGspOwned))
     {
-        NV_ASSERT_OK(kchannelGetNotifierInfo(pGpu, pDevice,
+        notifierStatus = kchannelGetNotifierInfo(pGpu, pDevice,
             pKernelChannel->hErrorContext,
             &pKernelChannel->pErrContextMemDesc,
             &pKernelChannel->errorContextType,
-            &pKernelChannel->errorContextOffset));
-        NV_ASSERT(pKernelChannel->errorContextType !=
-                  ERROR_NOTIFIER_TYPE_NONE);
+            &pErrorContextRef,
+            &pKernelChannel->errorContextOffset);
+        NV_ASSERT_OK(notifierStatus);
+        if (notifierStatus == NV_OK)
+        {
+            NV_ASSERT(pKernelChannel->errorContextType !=
+                      ERROR_NOTIFIER_TYPE_NONE);
+        }
     }
     if (pKernelChannel->hEccErrorContext == NV01_NULL_OBJECT)
     {
@@ -531,13 +539,18 @@ kchannelConstruct_IMPL
     }
     else if (!(RMCFG_FEATURE_PLATFORM_GSP && !pKernelChannel->bGspOwned))
     {
-        NV_ASSERT_OK(kchannelGetNotifierInfo(pGpu, pDevice,
+        notifierStatus = kchannelGetNotifierInfo(pGpu, pDevice,
             pKernelChannel->hEccErrorContext,
             &pKernelChannel->pEccErrContextMemDesc,
             &pKernelChannel->eccErrorContextType,
-            &pKernelChannel->eccErrorContextOffset));
-        NV_ASSERT(pKernelChannel->eccErrorContextType !=
-                  ERROR_NOTIFIER_TYPE_NONE);
+            &pEccErrorContextRef,
+            &pKernelChannel->eccErrorContextOffset);
+        NV_ASSERT_OK(notifierStatus);
+        if (notifierStatus == NV_OK)
+        {
+            NV_ASSERT(pKernelChannel->eccErrorContextType !=
+                      ERROR_NOTIFIER_TYPE_NONE);
+        }
     }
 
     if (IS_GSP_CLIENT(pGpu) || bFullSriov)
@@ -1878,6 +1891,7 @@ kchannelGetNotifierInfo
     NvHandle            hErrorContext,
     MEMORY_DESCRIPTOR **ppMemDesc,
     ErrorNotifierType  *pNotifierType,
+    RsResourceRef     **ppNotifierRef,
     NvU64              *pOffset
 )
 {
@@ -1887,9 +1901,11 @@ kchannelGetNotifierInfo
 
     NV_ASSERT_OR_RETURN(ppMemDesc != NULL, NV_ERR_INVALID_PARAMETER);
     NV_ASSERT_OR_RETURN(pNotifierType != NULL, NV_ERR_INVALID_PARAMETER);
+    NV_ASSERT_OR_RETURN(ppNotifierRef != NULL, NV_ERR_INVALID_PARAMETER);
 
     *ppMemDesc = NULL;
     *pNotifierType = ERROR_NOTIFIER_TYPE_UNKNOWN;
+    *ppNotifierRef = NULL;
     *pOffset = 0;
 
     if (hErrorContext == NV01_NULL_OBJECT)
@@ -1958,12 +1974,14 @@ kchannelGetNotifierInfo
             *ppMemDesc = pDmaMappingInfo->pMemDesc;
             // The notifier format here is struct NOTIFICATION, same as ctxdma
             *pNotifierType = ERROR_NOTIFIER_TYPE_CTXDMA;
+            *ppNotifierRef = RES_GET_REF(pMemory);
             *pOffset = offset;
         }
         else
         {
             *ppMemDesc = pMemory->pMemDesc;
             *pNotifierType = ERROR_NOTIFIER_TYPE_MEMORY;
+            *ppNotifierRef = RES_GET_REF(pMemory);
         }
         return NV_OK;
     }
@@ -1972,6 +1990,7 @@ kchannelGetNotifierInfo
     {
         *ppMemDesc = pContextDma->pMemDesc;
         *pNotifierType = ERROR_NOTIFIER_TYPE_CTXDMA;
+        *ppNotifierRef = RES_GET_REF(pContextDma);
         return NV_OK;
     }
 

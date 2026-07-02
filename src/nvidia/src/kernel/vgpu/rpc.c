@@ -133,7 +133,7 @@ typedef NV_STATUS dma_control_copy_params_from_rpc_buffer_v(NvU32 cmd, void *par
 #define VGPU_GSP_HIBERNATION_SHRD_BUFF_SIZE   RM_PAGE_SIZE_2M
 #define VGPU_GSP_HIBERNATION_DATA_BUFF_SIZE    8 * 1024 * 1024
 #define VGPU_GSP_HIBERNATION_DATA_MAX_SIZE    48 * 1024 * 1024
-#define VGPU_GSP_HIBERNTAION_TIMEOUT_US       8000000
+#define VGPU_GSP_HIBERNTAION_TIMEOUT_US       ((NV_VGPU_RPC_TIMEOUT_DEFAULT_USEC * 64u) / 100u) // 8s
 
 static NvU32 _gspHibernationBufAvailableData(OBJGPU *pGpu, OBJVGPU *pVGpu);
 static NV_STATUS _transferDataFromGspHibernationBuf(OBJGPU *pGpu, OBJVGPU *pVGpu, NvU64 num_bytes);
@@ -5533,7 +5533,6 @@ static NV_STATUS rpcRmApiControl_wrapper(OBJGPU *pGpu, OBJRPC *pRpc, NvHandle hC
     {
         return NV_ERR_NOT_SUPPORTED;
     }
-
     status = rpcWriteCommonHeader(pGpu,
                                   pRpc,
                                   NV_VGPU_MSG_FUNCTION_RM_API_CONTROL,
@@ -5561,7 +5560,6 @@ static NV_STATUS rpcRmApiControl_wrapper(OBJGPU *pGpu, OBJRPC *pRpc, NvHandle hC
         return status;
     }
     portMemCopy(pParams, paramSize, dest, paramSize);
-
     return rpc_params->status;
 }
 

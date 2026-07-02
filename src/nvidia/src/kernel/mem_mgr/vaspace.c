@@ -162,7 +162,7 @@ vaspaceGetVaLimit_IMPL(OBJVASPACE *pVAS)
     return pVAS->vasLimit;
 }
 
-void
+NV_STATUS
 vaspaceInvalidateTlb_IMPL
 (
     OBJVASPACE          *pVAS,
@@ -171,6 +171,7 @@ vaspaceInvalidateTlb_IMPL
 )
 {
     NV_ASSERT(0);
+    return NV_ERR_NOT_SUPPORTED;
 }
 
 NV_STATUS

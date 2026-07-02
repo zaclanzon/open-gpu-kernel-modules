@@ -2086,7 +2086,7 @@ gvaspaceUnmap_IMPL
     gvaspaceWalkUserCtxRelease(pGVAS, &userCtx);
 }
 
-void
+NV_STATUS
 gvaspaceInvalidateTlb_IMPL
 (
     OBJGVASPACE         *pGVAS,
@@ -2097,8 +2097,8 @@ gvaspaceInvalidateTlb_IMPL
     OBJVASPACE *pVAS = staticCast(pGVAS, OBJVASPACE);
     NvU32      gfid  = GPU_GFID_PF;
 
-    NV_ASSERT_OR_RETURN_VOID(!gpumgrGetBcEnabledStatus(pGpu));
-    NV_ASSERT_OR_RETURN_VOID(0 != (NVBIT(pGpu->gpuInstance) & pVAS->gpuMask));
+    NV_ASSERT_OR_RETURN(!gpumgrGetBcEnabledStatus(pGpu), NV_ERR_INVALID_STATE);
+    NV_ASSERT_OR_RETURN(0 != (NVBIT(pGpu->gpuInstance) & pVAS->gpuMask), NV_ERR_INVALID_ARGUMENT);
 
     GVAS_GPU_STATE    *pGpuState = gvaspaceGetGpuState(pGVAS, pGpu);
     MEMORY_DESCRIPTOR *pRootMem  = NULL;
@@ -2106,10 +2106,10 @@ gvaspaceInvalidateTlb_IMPL
     NvU32              invalidation_scope = NV_GMMU_INVAL_SCOPE_ALL_TLBS;
     NvBool             bCallingContextPlugin;
 
-    NV_ASSERT_OR_RETURN_VOID(vgpuIsCallingContextPlugin(pGpu, &bCallingContextPlugin) == NV_OK);
+    NV_ASSERT_OK_OR_RETURN(vgpuIsCallingContextPlugin(pGpu, &bCallingContextPlugin));
     if (!bCallingContextPlugin)
     {
-        NV_ASSERT_OR_RETURN_VOID(vgpuGetCallingContextGfid(pGpu, &gfid) == NV_OK);
+        NV_ASSERT_OK_OR_RETURN(vgpuGetCallingContextGfid(pGpu, &gfid));
     }
 
     if (pGVAS->flags & VASPACE_FLAGS_INVALIDATE_SCOPE_NVLINK_TLB)
@@ -2126,12 +2126,14 @@ gvaspaceInvalidateTlb_IMPL
     if (pRootMem != NULL)
     {
         KernelGmmu *pKernelGmmu = GPU_GET_KERNEL_GMMU(pGpu);
-        kgmmuInvalidateTlb_HAL(pGpu, pKernelGmmu, pRootMem,
-                              pGVAS->flags,
-                              update_type, gfid,
-                              invalidation_scope,
-                              NV_FALSE);
+        return kgmmuInvalidateTlb_HAL(pGpu, pKernelGmmu, pRootMem,
+                                      pGVAS->flags,
+                                      update_type, gfid,
+                                      invalidation_scope,
+                                      NV_FALSE);
     }
+
+    return NV_OK;
 }
 
 NV_STATUS
@@ -4296,7 +4298,8 @@ gvaspaceCopyServerReservedPdes_IMPL
                 aperture = ADDR_SYSMEM;
                 break;
             default:
-                NV_ASSERT_OR_GOTO(0, done);
+                NV_ASSERT(0);
+                goto done;
         }
 
         status = memdescCreate(&pMemDescNew, pGpu,
