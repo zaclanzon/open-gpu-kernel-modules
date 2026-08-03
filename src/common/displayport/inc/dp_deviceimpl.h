@@ -540,6 +540,32 @@ namespace DisplayPort
             bool                     retryRemote22BCapsReadMessage;
             bool                     bBKSVReadMessagePending;
             bool                     bBCapsReadMessagePending;
+            bool                     bDestroying;
+            unsigned                 callbackDepth;
+
+            class CallbackGuard
+            {
+                    DeviceHDCPDetection *owner;
+                    CallbackGuard(const CallbackGuard &) = delete;
+                    CallbackGuard &operator=(const CallbackGuard &) = delete;
+
+                public:
+                    CallbackGuard(DeviceHDCPDetection *owner)
+                        : owner(owner)
+                    {
+                        owner->beginCallback();
+                    }
+
+                    ~CallbackGuard()
+                    {
+                        owner->endCallback();
+                    }
+            };
+
+            void beginCallback(void);
+            void endCallback(void);
+            void requestDestroy(void);
+            void destroyNow(void);
 
         public:
 
@@ -549,6 +575,7 @@ namespace DisplayPort
                   retriesRemote22BCapsReadMessage(0), retryRemoteBKSVReadMessage(false),
                   retryRemoteBCapsReadMessage(false), retryRemote22BCapsReadMessage(false),
                   bBKSVReadMessagePending(false), bBCapsReadMessagePending(false)
+                  ,bDestroying(false), callbackDepth(0)
             {
                 this->parent = parent;
                 this->messageManager = messageManager;
@@ -556,6 +583,7 @@ namespace DisplayPort
             }
 
             ~DeviceHDCPDetection();
+            void destroy(void);
             void expired(const void * tag);
             void start();
             void waivePendingHDCPCapDoneNotification();

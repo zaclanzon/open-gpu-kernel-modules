@@ -642,6 +642,12 @@ serverAllocClient
     // race conditions with serverLockAllClients.
     //
     serverAcquireClientListLock(pServer);
+    if (pServer->activeClientCount == NV_U32_MAX)
+    {
+        serverReleaseClientListLock(pServer);
+        status = NV_ERR_INSUFFICIENT_RESOURCES;
+        goto done;
+    }
     pClientEntry->pClient = pClient;
 
     // Increase client count

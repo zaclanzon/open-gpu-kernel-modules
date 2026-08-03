@@ -3356,6 +3356,73 @@ bool DeviceImpl::setModeList(DisplayPort::DpModesetParams *modeList, unsigned nu
 }
 
 void
+DeviceHDCPDetection::beginCallback(void)
+{
+    callbackDepth++;
+}
+
+void
+DeviceHDCPDetection::endCallback(void)
+{
+    DP_ASSERT(callbackDepth > 0);
+    if (callbackDepth > 0)
+    {
+        callbackDepth--;
+    }
+
+    if (bDestroying && (callbackDepth == 0))
+    {
+        destroyNow();
+    }
+}
+
+void
+DeviceHDCPDetection::destroy(void)
+{
+    if (parent)
+    {
+        parent->isDeviceHDCPDetectionAlive = false;
+        if (parent->deviceHDCPDetection == this)
+        {
+            parent->deviceHDCPDetection = NULL;
+        }
+        parent = NULL;
+    }
+
+    requestDestroy();
+}
+
+void
+DeviceHDCPDetection::requestDestroy(void)
+{
+    if (bDestroying)
+    {
+        return;
+    }
+
+    bDestroying = true;
+    if (callbackDepth == 0)
+    {
+        destroyNow();
+    }
+}
+
+void
+DeviceHDCPDetection::destroyNow(void)
+{
+    if (parent)
+    {
+        parent->isDeviceHDCPDetectionAlive = false;
+        if (parent->deviceHDCPDetection == this)
+        {
+            parent->deviceHDCPDetection = NULL;
+        }
+    }
+
+    delete this;
+}
+
+void
 DeviceHDCPDetection::start()
 {
     if (parent->isNativeDPCD())
@@ -3447,6 +3514,12 @@ DeviceHDCPDetection::handleRemoteDpcdReadDownReply
     MessageManager::Message *from
 )
 {
+    if (bDestroying)
+    {
+        return;
+    }
+
+    CallbackGuard callbackGuard(this);
 
     NvU8 i2cBcaps;
     unsigned dataCompleted;
@@ -3470,8 +3543,7 @@ DeviceHDCPDetection::handleRemoteDpcdReadDownReply
             // Destruct only when no message is pending
             if (!(bBKSVReadMessagePending || bBCapsReadMessagePending))
             {
-                parent->isDeviceHDCPDetectionAlive = false;
-                delete this;
+                requestDestroy();
             }
             return;
         }
@@ -3503,8 +3575,7 @@ DeviceHDCPDetection::handleRemoteDpcdReadDownReply
             // Destruct only when no message is pending
             if (!(bBKSVReadMessagePending || bBCapsReadMessagePending))
             {
-                parent->isDeviceHDCPDetectionAlive = false;
-                delete this;
+                requestDestroy();
             }
             return;
         }
@@ -3529,6 +3600,10 @@ DeviceHDCPDetection::handleRemoteDpcdReadDownReply
                 parent->transaction(AuxBus::read, AuxBus::i2cMot, HDCP_I2C_CLIENT_ADDR, &i2cBcaps,
                                  1, &dataCompleted, &defaultReason, HDCP_BCAPS_DDC_OFFSET, 1);
 
+                if (bDestroying)
+                {
+                    return;
+                }
                 DP_PRINTF(DP_NOTICE, "DP-QM> Device at '%s' is with DDC BACPS: %x",
                       parent->address.toString(sb), i2cBcaps);
 
@@ -3618,8 +3693,8 @@ DeviceHDCPDetection::handleRemoteDpcdReadDownReply
         // Destruct only when no message is pending
         if (!(bBKSVReadMessagePending || bBCapsReadMessagePending))
         {
-            parent->isDeviceHDCPDetectionAlive = false;
-            delete this;
+            requestDestroy();
+            return;
         }
     }
     else
@@ -3666,6 +3741,12 @@ DeviceHDCPDetection::messageFailed
     NakData *nakData
 )
 {
+    if (bDestroying)
+    {
+        return;
+    }
+
+    CallbackGuard callbackGuard(this);
 
     if (from == &remoteBKSVReadMessage)
     {
@@ -3731,7 +3812,6 @@ DeviceHDCPDetection::messageFailed
     if (!(bBKSVReadMessagePending || bBCapsReadMessagePending))
     {
         // Becareful below is ! ..
-        parent->isDeviceHDCPDetectionAlive = false;
 
         // Complete remote HDCP probe and check if can power down again.
         if (parent->connector)
@@ -3740,7 +3820,7 @@ DeviceHDCPDetection::messageFailed
             parent->connector->isNoActiveStreamAndPowerdown();
         }
 
-        delete this;
+        requestDestroy();
     }
 }
 
@@ -3750,6 +3830,12 @@ DeviceHDCPDetection::expired
     const void *tag
 )
 {
+    if (bDestroying)
+    {
+        return;
+    }
+
+    CallbackGuard callbackGuard(this);
 
     // Clear stale HDCP states when monitor instance is already destroyed
     if (!parent->plugged)
@@ -3772,8 +3858,7 @@ DeviceHDCPDetection::expired
 
         if (!(bBKSVReadMessagePending || bBCapsReadMessagePending))
         {
-            parent->isDeviceHDCPDetectionAlive = false;
-            delete this;
+            requestDestroy();
         }
         return;
     }
@@ -3830,6 +3915,14 @@ DeviceHDCPDetection::expired
 
 DeviceHDCPDetection::~DeviceHDCPDetection()
 {
+    if (parent)
+    {
+        parent->isDeviceHDCPDetectionAlive = false;
+        if (parent->deviceHDCPDetection == this)
+        {
+            parent->deviceHDCPDetection = NULL;
+        }
+    }
 
     // Clear all pending callbacks/messages
     if (this->timer)
@@ -3851,6 +3944,5 @@ DeviceHDCPDetection::waivePendingHDCPCapDoneNotification()
     // Waive the pendingHDCPCapDone notification
     parent->shadow.hdcpCapDone = true;
 
-    parent->isDeviceHDCPDetectionAlive = false;
-    delete this;
+    requestDestroy();
 }

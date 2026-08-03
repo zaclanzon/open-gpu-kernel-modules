@@ -256,7 +256,17 @@ gspTraceAddBindpoint
 
     if (IS_VIRTUAL(pGpu))
     {
-        NvU32 allocBufferSize = gspTracingBufferSize * sizeof(NV_RATS_GSP_TRACE_RECORD) + sizeof(NV_RATS_VGPU_GSP_TRACING_BUFFER);
+        NvU32 allocBufferSize;
+        NvU32 mulResult;
+
+        NV_CHECK_OR_RETURN(LEVEL_ERROR,
+                           portSafeMulU32(gspTracingBufferSize, (NvU32)sizeof(NV_RATS_GSP_TRACE_RECORD), &mulResult),
+                           NV_ERR_INVALID_ARGUMENT);
+        NV_CHECK_OR_RETURN(LEVEL_ERROR,
+                           portSafeAddU32(mulResult, (NvU32)sizeof(NV_RATS_VGPU_GSP_TRACING_BUFFER), &allocBufferSize),
+                           NV_ERR_INVALID_ARGUMENT);
+        NV_CHECK_OR_RETURN(LEVEL_ERROR, allocBufferSize <= GSP_TRACE_BUFFER_ALLOC_SIZE_MAX,
+                           NV_ERR_INVALID_ARGUMENT);
         NV_ASSERT_OK_OR_GOTO(status,
             memdescCreate(&(pBind->pMemDesc),
                           pGpu,

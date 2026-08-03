@@ -6678,7 +6678,8 @@ void ConnectorImpl::disconnectDeviceList()
         // Deallocate object which may go stale after long pulse handling.
         if (device->isDeviceHDCPDetectionAlive)
         {
-            delete device->deviceHDCPDetection;
+            device->deviceHDCPDetection->destroy();
+            device->isHDCPCap = False;
             device->deviceHDCPDetection = NULL;
             device->isDeviceHDCPDetectionAlive = false;
         }

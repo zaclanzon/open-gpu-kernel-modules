@@ -851,7 +851,12 @@ static NV_STATUS RmAccessRegistry(
             break;
 
         case NVOS38_ACCESS_TYPE_WRITE_DWORD:
-            if (isDevice && osIsAdministrator())
+            if (!osIsAdministrator())
+            {
+                RmStatus = NV_ERR_INSUFFICIENT_PERMISSIONS;
+                break;
+            }
+            if (isDevice)
             {
                 while ((pGpu = gpumgrGetNextGpu(gpuMask, &gpuInstance)) != NULL)
                 {
@@ -883,7 +888,12 @@ static NV_STATUS RmAccessRegistry(
             break;
 
         case NVOS38_ACCESS_TYPE_WRITE_BINARY:
-            if (isDevice && osIsAdministrator())
+            if (!osIsAdministrator())
+            {
+                RmStatus = NV_ERR_INSUFFICIENT_PERMISSIONS;
+                break;
+            }
+            if (isDevice)
             {
                 while ((pGpu = gpumgrGetNextGpu(gpuMask, &gpuInstance)) != NULL)
                 {
@@ -1029,6 +1039,30 @@ done:
     return status;
 }
 
+static void RmSanitizeLogString(
+    char *pString,
+    NvU32 stringLength
+)
+{
+    NvU32 i;
+
+    if (pString == NULL)
+        return;
+
+    for (i = 0; i < stringLength; i++)
+    {
+        NvU8 ch = (NvU8)pString[i];
+
+        if (ch == '\0')
+            return;
+
+        if ((ch < 0x20) || (ch == 0x7f))
+        {
+            pString[i] = '?';
+        }
+    }
+}
+
 static NV_STATUS RmPerformVersionCheck(
     void *pData,
     NvU32 dataSize
@@ -1122,6 +1156,9 @@ static NV_STATUS RmPerformVersionCheck(
 
     procId = os_get_current_process();
     os_get_current_process_name(procName, sizeof(procName));
+
+    RmSanitizeLogString(pParams->versionString, NV_RM_API_VERSION_STRING_LENGTH);
+    RmSanitizeLogString(procName, sizeof(procName));
 
     nv_printf(NV_DBG_ERRORS,
               "NVRM: API mismatch: the client '%s' (pid %u)\n"
@@ -1315,6 +1352,10 @@ RmDmabufVerifyMemHandle(
     }
 
     pMemDesc = pSrcMemory->pMemDesc;
+    if (pMemDesc == NULL)
+    {
+        return NV_ERR_INVALID_STATE;
+    }
 
     if (pGpuInstanceInfo != NULL)
     {
@@ -5536,13 +5577,14 @@ NV_STATUS NV_API_CALL rm_dma_buf_dup_mem_handle(
 )
 {
     MEMORY_DESCRIPTOR *pMemDesc;
-    THREAD_STATE_NODE threadState;
-    NV_STATUS rmStatus;
+    THREAD_STATE_NODE *pThreadState;
+    NV_STATUS rmStatus = NV_ERR_NO_MEMORY;
     OBJGPU *pGpu;
     void *fp;
 
     NV_ENTER_RM_RUNTIME(sp,fp);
-    threadStateInit(&threadState, THREAD_STATE_FLAGS_NONE);
+    pThreadState = threadStateAlloc(THREAD_STATE_FLAGS_NONE);
+    NV_ASSERT_OR_GOTO(pThreadState != NULL, Done);
 
     pGpu = NV_GET_NV_PRIV_PGPU(nv);
 
@@ -5610,7 +5652,9 @@ NV_STATUS NV_API_CALL rm_dma_buf_dup_mem_handle(
         *pbCanMmap = pGpu->getProperty(pGpu, PDB_PROP_GPU_ZERO_FB);
     }
 
-    threadStateFree(&threadState, THREAD_STATE_FLAGS_NONE);
+Done:
+    if (pThreadState != NULL)
+        threadStateFree(pThreadState, THREAD_STATE_FLAGS_NONE);
     NV_EXIT_RM_RUNTIME(sp,fp);
 
     return rmStatus;
@@ -5668,14 +5712,20 @@ NV_STATUS NV_API_CALL rm_dma_buf_map_mem_handle(
     MemoryArea            *pMemArea
 )
 {
-    THREAD_STATE_NODE threadState;
+    THREAD_STATE_NODE *pThreadState;
     NV_STATUS rmStatus = NV_ERR_INVALID_ARGUMENT;
     OBJGPU *pGpu;
     MEMORY_DESCRIPTOR *pMemDesc;
     void *fp;
 
     NV_ENTER_RM_RUNTIME(sp,fp);
-    threadStateInit(&threadState, THREAD_STATE_FLAGS_NONE);
+    pThreadState = threadStateAlloc(THREAD_STATE_FLAGS_NONE);
+    if (pThreadState == NULL)
+    {
+        NV_ASSERT(0);
+        rmStatus = NV_ERR_NO_MEMORY;
+        goto Done;
+    }
 
     NV_ASSERT_OR_GOTO(((pMemArea != NULL) &&
                        (pMemInfo != NULL)) &&
@@ -5785,7 +5835,8 @@ NV_STATUS NV_API_CALL rm_dma_buf_map_mem_handle(
     }
 
 Done:
-    threadStateFree(&threadState, THREAD_STATE_FLAGS_NONE);
+    if (pThreadState != NULL)
+        threadStateFree(pThreadState, THREAD_STATE_FLAGS_NONE);
     NV_EXIT_RM_RUNTIME(sp,fp);
 
     return rmStatus;

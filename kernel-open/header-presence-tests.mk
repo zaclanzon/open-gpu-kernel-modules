@@ -36,6 +36,7 @@ NV_HEADER_PRESENCE_TESTS = \
   linux/stdarg.h \
   linux/iosys-map.h \
   linux/vfio_pci_core.h \
+  linux/nvgrace-egm.h \
   linux/cc_platform.h \
   linux/slub_def.h \
   linux/of_gpio.h \

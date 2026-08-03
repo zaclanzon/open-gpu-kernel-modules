@@ -1545,7 +1545,7 @@ kvgpumgrGuestUnregister(OBJGPU *pGpu, KERNEL_HOST_VGPU_DEVICE *pKernelHostVgpuDe
         {
             NV_PRINTF(LEVEL_ERROR, "Request to unregister Invalid GFID\n");
             rmStatus = NV_ERR_INVALID_STATE;
-            goto done;
+            return rmStatus;
         }
     }
 

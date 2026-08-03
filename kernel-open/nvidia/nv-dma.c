@@ -47,7 +47,7 @@ static enum dma_data_direction nv_dma_get_direction
     nv_dma_map_t *dma_map
 )
 {
-    return DMA_BIDIRECTIONAL;
+    return dma_map->bReadOnlyDeviceMap ? DMA_TO_DEVICE : DMA_BIDIRECTIONAL;
 }
 
 static inline NvBool nv_dma_is_addressable(

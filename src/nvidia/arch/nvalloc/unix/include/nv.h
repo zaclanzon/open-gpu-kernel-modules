@@ -615,6 +615,8 @@ struct nv_file_private_t
     nv_file_private_t *ctl_nvfp;
     void *ctl_nvfp_priv;
     NvU32 register_or_refcount;
+    // In-flight nv_post_event() calls using this file private.
+    NvS32 event_posting_refcount;
 
     //
     // True if a client or an event was ever allocated on this fd.
@@ -622,6 +624,11 @@ struct nv_file_private_t
     //
     NvBool bCleanupRmapi;
 };
+
+static inline NvS32 nv_event_posting_refcount_read(nv_file_private_t *nvfp)
+{
+    return *((volatile NvS32 *)&nvfp->event_posting_refcount);
+}
 
 // Forward define the gpu ops structures
 typedef struct gpuSession                           *nvgpuSessionHandle_t;

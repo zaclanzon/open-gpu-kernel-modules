@@ -29,14 +29,20 @@
 
 #include "g_finn_rm_api.h"
 
+//
+// FINN control commands are generated as (interface_id << 8) | message_id.
+// Keep all interface_id bits, including legacy/reserved control bits, so
+// legacy-GSS commands cannot alias back to the base command's serializer.
+//
+#define RMCTRL_FINN_CMD_MESSAGE_ID_MASK 0xffU
+
 static NvU32
 _rmapiFinnGetInterfaceId
 (
     NvU32 cmd
 )
 {
-    return (DRF_VAL(XXXX, _CTRL_CMD, _CLASS, cmd) << 8) |
-            DRF_VAL(XXXX, _CTRL_CMD, _CATEGORY, cmd);
+    return cmd >> 8;
 }
 
 static NvU32
@@ -45,7 +51,7 @@ _rmapiFinnGetMessageId
     NvU32 cmd
 )
 {
-    return DRF_VAL(XXXX, _CTRL_CMD, _INDEX, cmd);
+    return cmd & RMCTRL_FINN_CMD_MESSAGE_ID_MASK;
 }
 
 /**

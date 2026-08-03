@@ -1377,6 +1377,46 @@ void osUnmapGPU(
     }
 }
 
+static NV_STATUS referenceEventForPost(
+    nv_event_t *event,
+    nv_file_private_t **ppNvfp
+)
+{
+    nv_state_t *nv = nv_get_ctl_state();
+
+    portSyncSpinlockAcquire(nv->event_spinlock);
+
+    if (event->active == 0)
+    {
+        portSyncSpinlockRelease(nv->event_spinlock);
+        return NV_ERR_INVALID_EVENT;
+    }
+
+    ++event->refcount;
+    *ppNvfp = event->nvfp;
+    portAtomicIncrementS32(&event->nvfp->event_posting_refcount);
+
+    portSyncSpinlockRelease(nv->event_spinlock);
+    return NV_OK;
+}
+
+static void dereferenceEventForPost(
+    nv_event_t *event,
+    nv_file_private_t *nvfp
+)
+{
+    nv_state_t *nv = nv_get_ctl_state();
+
+    portSyncSpinlockAcquire(nv->event_spinlock);
+
+    NV_ASSERT(event->refcount > 0);
+    if (--event->refcount == 0 && !event->active)
+        portMemFree(event);
+    portAtomicDecrementS32(&nvfp->event_posting_refcount);
+
+    portSyncSpinlockRelease(nv->event_spinlock);
+}
+
 static void postEvent(
     nv_event_t *event,
     NvU32 hEvent,
@@ -1386,13 +1426,15 @@ static void postEvent(
     NvBool dataValid
 )
 {
-    if (osReferenceObjectCount(event) != NV_OK)
+    nv_file_private_t *nvfp = NULL;
+
+    if (referenceEventForPost(event, &nvfp) != NV_OK)
         return;
 
     nv_post_event(event, hEvent, notifyIndex,
                   info32, info16, dataValid);
 
-    osDereferenceObjectCount(event);
+    dereferenceEventForPost(event, nvfp);
 }
 
 NvU32 osSetEvent
@@ -3369,7 +3411,15 @@ static NvBool osMemDescRequiresReadOnlyDeviceDmaMap
     MEMORY_DESCRIPTOR *pMemDesc
 )
 {
-    return NV_FALSE;
+    //
+    // MEMDESC_FLAGS_USER_READ_ONLY is also used by RM-owned buffers that the
+    // kernel writes and user/GSP reads. Restrict RO DMA direction to external
+    // OS descriptor mappings.
+    //
+    return memdescGetFlag(pMemDesc, MEMDESC_FLAGS_EXT_PAGE_ARRAY_MEM) &&
+           !memdescGetFlag(pMemDesc, MEMDESC_FLAGS_KERNEL_MODE) &&
+           (memdescGetFlag(pMemDesc, MEMDESC_FLAGS_USER_READ_ONLY) ||
+            memdescGetFlag(pMemDesc, MEMDESC_FLAGS_DEVICE_READ_ONLY));
 }
 
 /*!

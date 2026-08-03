@@ -1045,6 +1045,10 @@ static void nv_free_file_private(nv_linux_file_private_t *nvlfp)
     if (nvlfp == NULL)
         return;
 
+    // Event teardown can race in-flight posts that still use nvfp.
+    while (READ_ONCE(nvlfp->nvfp.event_posting_refcount) != 0)
+        cond_resched();
+
     for (nvet = nvlfp->event_data_head; nvet != NULL; nvet = nvlfp->event_data_head)
     {
         nvlfp->event_data_head = nvlfp->event_data_head->next;
