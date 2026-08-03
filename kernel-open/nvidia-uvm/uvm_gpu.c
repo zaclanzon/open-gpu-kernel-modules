@@ -3073,6 +3073,19 @@ static NV_STATUS gpu_retain_by_uuid_locked(const NvProcessorUuid *gpu_uuid,
         if (status != NV_OK)
             goto error_unregister;
     }
+#if UVM_IS_CONFIG_HMM()
+    // The GPU object already exists but was first brought up by a VA space with
+    // HMM disabled, so it has no devmem and can't service this HMM request.
+    // add_gpu(), which performs the same check, is not reached on this path, so
+    // repeat it here. Tell the caller to retry with HMM disabled. Nothing was
+    // retained, so there is nothing to undo.
+    // NUMA and integrated GPUs don't supoport ZONE_DEVICE memory so we don't
+    // need devmem to be initialised on those.
+    else if (!parent_gpu->devmem && enable_hmm && uvm_hmm_is_enabled_system_wide()) {
+        status = NV_ERR_BUSY_RETRY;
+        goto error_unregister;
+    }
+#endif
     else {
         atomic64_inc(&gpu->retained_count);
     }

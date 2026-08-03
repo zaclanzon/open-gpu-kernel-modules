@@ -4340,6 +4340,8 @@ gpumgrCacheCreateComputeInstance_IMPL(OBJGPU *pGpu, NvU32 swizzId, NvU32 ciId)
 
     NV_ASSERT_OR_GOTO(pGpuInstances != NULL, done);
 
+    NV_ASSERT_OR_GOTO(ciId < GPUMGR_MAX_COMPUTE_INSTANCES, done);
+
     for (i = 0; i < GPUMGR_MAX_GPU_INSTANCES; i++)
     {
         if (pGpuInstances[i].bValid &&
@@ -4376,6 +4378,8 @@ gpumgrCacheDestroyComputeInstance_IMPL(OBJGPU *pGpu, NvU32 swizzId, NvU32 ciId)
     }
 
     NV_ASSERT_OR_GOTO(pGpuInstances != NULL, done);
+
+    NV_ASSERT_OR_GOTO(ciId < GPUMGR_MAX_COMPUTE_INSTANCES, done);
 
     for (i = 0; i < GPUMGR_MAX_GPU_INSTANCES; i++)
     {

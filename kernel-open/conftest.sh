@@ -1175,14 +1175,15 @@ compile_test() {
             #
             CODE="
             #include <linux/pci.h>
+            #if defined(NV_LINUX_NVGRACE_EGM_H_PRESENT)
             #include <linux/nvgrace-egm.h>
+            #endif
             void conftest_egm_module_helper_api_present() {
-                struct pci_dev *pdev = NULL;
-                register_egm_node(pdev);
-                unregister_egm_node(pdev);
+                register_egm_node();
+                unregister_egm_node();
             }
             "
-            compile_check_conftest "$CODE" "NV_EGM_MODULE_HELPER_API_PRESENT" "" "types"
+            compile_check_conftest "$CODE" "NV_EGM_MODULE_HELPER_API_PRESENT" "" "functions"
         ;;
 
         egm_bad_pages_handling_support)

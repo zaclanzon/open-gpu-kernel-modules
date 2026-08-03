@@ -304,6 +304,9 @@ subdeviceCtrlCmdNvdInsertNocatJournalRecord_IMPL
 
     portMemSet(&newEntry, 0, sizeof(newEntry));
 
+    pRecordParams->nocatJournalRecord.source[sizeof(pRecordParams->nocatJournalRecord.source) - 1] = '\0';
+    pRecordParams->nocatJournalRecord.faultingEngine[sizeof(pRecordParams->nocatJournalRecord.faultingEngine) - 1] = '\0';
+
     // fill in the newEntry structure with the data from the insertData.
     newEntry.timestamp          = pRecordParams->nocatJournalRecord.timestamp;
     newEntry.recType            = pRecordParams->nocatJournalRecord.recType;

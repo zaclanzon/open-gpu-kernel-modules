@@ -1455,6 +1455,57 @@ void osUnmapGPU(
     }
 }
 
+static NV_STATUS referenceEventForPost(
+    nv_event_t *event,
+    NvBool bDoRefCount,
+    nv_event_t *eventSnapshot,
+    nv_file_private_t **ppNvfp
+)
+{
+    nv_state_t *nv = nv_get_ctl_state();
+
+    portSyncSpinlockAcquire(nv->event_spinlock);
+
+    if (event->active == 0)
+    {
+        portSyncSpinlockRelease(nv->event_spinlock);
+        return NV_ERR_INVALID_EVENT;
+    }
+
+    if (bDoRefCount)
+        ++event->refcount;
+
+    // Snapshot while event_spinlock still protects the event lifetime.
+    *eventSnapshot = *event;
+    *ppNvfp = eventSnapshot->nvfp;
+    portAtomicIncrementS32(&(*ppNvfp)->event_posting_refcount);
+
+    portSyncSpinlockRelease(nv->event_spinlock);
+    return NV_OK;
+}
+
+static void dereferenceEventForPost(
+    nv_event_t *event,
+    NvBool bDoRefCount,
+    nv_file_private_t *nvfp
+)
+{
+    if (bDoRefCount)
+    {
+        nv_state_t *nv = nv_get_ctl_state();
+
+        portSyncSpinlockAcquire(nv->event_spinlock);
+
+        NV_ASSERT(event->refcount > 0);
+        if (--event->refcount == 0 && !event->active)
+            portMemFree(event);
+
+        portSyncSpinlockRelease(nv->event_spinlock);
+    }
+
+    portAtomicDecrementS32(&nvfp->event_posting_refcount);
+}
+
 static void postEvent(
     nv_event_t *event,
     NvU32 hEvent,
@@ -1467,23 +1518,18 @@ static void postEvent(
 {
     nv_event_t *eventToPost = event;
 
-    if (bDoRefCount)
-    {
-        if (osReferenceObjectCount(event) != NV_OK)
-            return;
-    }
-    else
-    {
-        // Best effort. Can be changed in parallel by free_os_event.
-        if (event->active == 0)
-            return;
-    }
+    nv_file_private_t *nvfp = NULL;
+    nv_event_t eventSnapshot;
+
+    if (referenceEventForPost(event, bDoRefCount, &eventSnapshot, &nvfp) != NV_OK)
+        return;
+
+    eventToPost = &eventSnapshot;
 
     nv_post_event(eventToPost, hEvent, notifyIndex,
                   info32, info16, dataValid);
 
-    if (bDoRefCount)
-        osDereferenceObjectCount(event);
+    dereferenceEventForPost(bDoRefCount ? event : NULL, bDoRefCount, nvfp);
 }
 
 NvU32 osSetEvent
@@ -3462,7 +3508,15 @@ static NvBool osMemDescRequiresReadOnlyDeviceDmaMap
     MEMORY_DESCRIPTOR *pMemDesc
 )
 {
-    return NV_FALSE;
+    //
+    // MEMDESC_FLAGS_USER_READ_ONLY is also used by RM-owned buffers that the
+    // kernel writes and user/GSP reads. Restrict RO DMA direction to external
+    // OS descriptor mappings.
+    //
+    return memdescGetFlag(pMemDesc, MEMDESC_FLAGS_EXT_PAGE_ARRAY_MEM) &&
+           !memdescGetFlag(pMemDesc, MEMDESC_FLAGS_KERNEL_MODE) &&
+           (memdescGetFlag(pMemDesc, MEMDESC_FLAGS_USER_READ_ONLY) ||
+            memdescGetFlag(pMemDesc, MEMDESC_FLAGS_DEVICE_READ_ONLY));
 }
 
 /*!

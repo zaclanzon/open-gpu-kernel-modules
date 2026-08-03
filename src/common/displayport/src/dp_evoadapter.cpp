@@ -121,7 +121,7 @@ const struct
     {NV_DP_REGKEY_ENABLE_CLEAR_MSA_WHEN_NOT_USED,         &dpRegkeyDatabase.bEnableClearMSAWhenNotUsed,         DP_REG_VAL_BOOL},
     {NV_DP_REGKEY_SKIP_PANEL_POWER_WRITE,                 &dpRegkeyDatabase.bSkipPanelPowerWrite,               DP_REG_VAL_BOOL},
     {NV_DP_REGKEY_SET_CONNECTOR_HDMI_FOR_DONGLE,          &dpRegkeyDatabase.bSetConnectorHdmiForDongle,         DP_REG_VAL_BOOL},
-    {NV_DP_REGKEY_ENABLE_SST_EDID_RECOVERY_FIX,          &dpRegkeyDatabase.bEnableSstEdidRecoveryFix,          DP_REG_VAL_BOOL}
+    {NV_DP_REGKEY_ENABLE_SST_EDID_RECOVERY_FIX,           &dpRegkeyDatabase.bEnableSstEdidRecoveryFix,          DP_REG_VAL_BOOL}
 };
 
 EvoMainLink::EvoMainLink(EvoInterface * provider, Timer * timer) :

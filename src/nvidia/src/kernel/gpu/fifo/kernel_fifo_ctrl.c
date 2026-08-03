@@ -30,6 +30,9 @@
 #include "kernel/gpu/mem_mgr/mem_mgr.h"
 #include "kernel/virtualization/hypervisor/hypervisor.h"
 #include "kernel/core/locks.h"
+#include "kernel/core/system.h"
+#include "kernel/rmapi/client.h"
+#include "kernel/rmapi/rs_utils.h"
 #include "lib/base_utils.h"
 #include "platform/sli/sli.h"
 
@@ -46,6 +49,34 @@
 
 static NV_STATUS _kfifoGetCaps(OBJGPU *pGpu, NvU8 *pKfifoCaps);
 
+static NV_STATUS
+_kfifoValidateTargetClient
+(
+    NvHandle hClient
+)
+{
+    CALL_CONTEXT *pCallContext = resservGetTlsCallContext();
+    OBJSYS *pSys = SYS_GET_INSTANCE();
+
+    NV_ASSERT_OR_RETURN(pCallContext != NULL, NV_ERR_INVALID_STATE);
+    NV_ASSERT_OR_RETURN(pCallContext->pClient != NULL, NV_ERR_INVALID_CLIENT);
+    NV_ASSERT_OR_RETURN(pSys != NULL, NV_ERR_INVALID_STATE);
+
+    if (pCallContext->pClient->hClient == hClient)
+    {
+        return NV_OK;
+    }
+
+    if ((pCallContext->secInfo.privLevel >= RS_PRIV_LEVEL_USER_ROOT) ||
+        !pSys->getProperty(pSys, PDB_PROP_SYS_VALIDATE_CLIENT_HANDLE))
+    {
+        return NV_OK;
+    }
+
+    return osValidateClientTokens(
+        (void *)rmclientGetSecurityTokenByHandle(pCallContext->pClient->hClient),
+        (void *)rmclientGetSecurityTokenByHandle(hClient));
+}
 /*!
  * @brief deviceCtrlCmdFifoGetChannelList
  */
@@ -603,15 +634,17 @@ diagapiCtrlCmdFifoGetChannelState_IMPL
 )
 {
     OBJGPU *pGpu = GPU_RES_GET_GPU(pDiagApi);
-    RsClient *pChannelClient;
+    RsResourceRef *pResourceRef;
     KernelChannel *pKernelChannel;
 
     NV_CHECK_OK_OR_RETURN(LEVEL_INFO,
-        serverGetClientUnderLock(&g_resServ, pChannelStateParams->hClient,
-            &pChannelClient));
-
+        _kfifoValidateTargetClient(pChannelStateParams->hClient));
     NV_CHECK_OK_OR_RETURN(LEVEL_INFO,
-        CliGetKernelChannel(pChannelClient, pChannelStateParams->hChannel, &pKernelChannel));
+        serverutilGetResourceRefWithType(pChannelStateParams->hClient,
+                                         pChannelStateParams->hChannel,
+                                         classId(KernelChannel),
+                                         &pResourceRef));
+    pKernelChannel = dynamicCast(pResourceRef->pResource, KernelChannel);
     NV_CHECK_OK_OR_RETURN(LEVEL_INFO,
         kchannelGetChannelPhysicalState(pGpu, pKernelChannel, pChannelStateParams));
 
@@ -1012,7 +1045,6 @@ subdeviceCtrlCmdFifoQueryChannelUniqueId_IMPL
     RsResourceRef *pResourceRef   = NULL;
     KernelChannel *pKernelChannel = NULL;
     NvU32 i;
-    RsClient      *pRsClient      = NULL;
 
     NV_CHECK_OR_RETURN(LEVEL_INFO,
         (pGetChannelUidParams->numChannels > 0 && pGetChannelUidParams->numChannels <= NV2080_CTRL_CMD_FIFO_MAX_CHANNELS_PER_TSG),
@@ -1022,11 +1054,12 @@ subdeviceCtrlCmdFifoQueryChannelUniqueId_IMPL
     {
 
         NV_CHECK_OK_OR_RETURN(LEVEL_INFO,
-            serverGetClientUnderLock(&g_resServ, pGetChannelUidParams->hClients[i], &pRsClient));
-
+            _kfifoValidateTargetClient(pGetChannelUidParams->hClients[i]));
         NV_CHECK_OK_OR_RETURN(LEVEL_INFO,
-            clientGetResourceRefByType(pRsClient, pGetChannelUidParams->hChannels[i],
-                classId(KernelChannel), &pResourceRef));
+            serverutilGetResourceRefWithType(pGetChannelUidParams->hClients[i],
+                                             pGetChannelUidParams->hChannels[i],
+                                             classId(KernelChannel),
+                                             &pResourceRef));
         pKernelChannel = dynamicCast(pResourceRef->pResource, KernelChannel);
         pGetChannelUidParams->channelUniqueIDs[i] = kchannelGetCid(pKernelChannel);
     }
@@ -1040,7 +1073,6 @@ subdeviceCtrlCmdFifoGetChannelGroupUniqueIdInfo_IMPL
     NV2080_CTRL_FIFO_GET_CHANNEL_GROUP_UNIQUE_ID_INFO_PARAMS *pGetCidGrpParams
 )
 {
-    RsClient              *pRsClient              = NULL;
     RsResourceRef         *pResourceRef           = NULL;
     KernelChannelGroupApi *pKernelChannelGroupApi = NULL;
     KernelChannelGroup    *pKernelChannelGroup    = NULL;
@@ -1048,18 +1080,20 @@ subdeviceCtrlCmdFifoGetChannelGroupUniqueIdInfo_IMPL
     NV_STATUS status;
 
     NV_CHECK_OK_OR_RETURN(LEVEL_INFO,
-            serverGetClientUnderLock(&g_resServ, pGetCidGrpParams->hClient, &pRsClient));
+        _kfifoValidateTargetClient(pGetCidGrpParams->hClient));
 
-    status = clientGetResourceRefByType(pRsClient, pGetCidGrpParams->hChannelOrTsg,
-                                        classId(KernelChannelGroupApi),
-                                        &pResourceRef);;
+    status = serverutilGetResourceRefWithType(pGetCidGrpParams->hClient,
+                                              pGetCidGrpParams->hChannelOrTsg,
+                                              classId(KernelChannelGroupApi),
+                                              &pResourceRef);
     if (status != NV_OK)
     {
         // if its not a channel Group, check if its a Kernel Channel.
         NV_CHECK_OK_OR_RETURN(LEVEL_INFO,
-            clientGetResourceRefByType(pRsClient, pGetCidGrpParams->hChannelOrTsg,
-                classId(KernelChannel),
-                &pResourceRef));
+            serverutilGetResourceRefWithType(pGetCidGrpParams->hClient,
+                                             pGetCidGrpParams->hChannelOrTsg,
+                                             classId(KernelChannel),
+                                             &pResourceRef));
 
         pKernelChannel = dynamicCast(pResourceRef->pResource, KernelChannel);
 

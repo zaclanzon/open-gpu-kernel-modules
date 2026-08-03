@@ -316,9 +316,11 @@ bool DisplayPort::EdidReadSST(Edid & edid, AuxBus * auxBus, Timer* timer,
             if (status)
             {
                 if (dpRegkeyDatabase.bEnableSstEdidRecoveryFix &&
+                    !bBypassAssembler &&
                     !edid.isValidHeader())
                 {
                     edid.resetData();
+                    elapsedTime = timer->getTimeUs() - startTime;
                     timer->sleep(EDID_READ_RETRY_TIMEOUT_MS);
                     continue;
                 }

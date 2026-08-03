@@ -166,6 +166,8 @@ kchannelConstruct_IMPL
     NvBool                  bRpcAllocated    = NV_FALSE;
     NvBool                  bFullSriov       = IS_VIRTUAL_WITH_SRIOV(pGpu) && !gpuIsWarBug200577889SriovHeavyEnabled(pGpu);
     NvBool                  bAddedToGroup    = NV_FALSE;
+    NvBool                  bErrorContextDepAdded = NV_FALSE;
+    NvBool                  bEccErrorContextDepAdded = NV_FALSE;
     NvU32                   callingContextGfid;
     Device                 *pDevice;
     NvBool                  bUvmOwnedFlag;
@@ -529,6 +531,13 @@ kchannelConstruct_IMPL
         NV_ASSERT_OK(notifierStatus);
         if (notifierStatus == NV_OK)
         {
+            if (pErrorContextRef != NULL)
+            {
+                NV_ASSERT_OK_OR_GOTO(status,
+                                     refAddDependant(pErrorContextRef, pResourceRef),
+                                     cleanup);
+                bErrorContextDepAdded = NV_TRUE;
+            }
             NV_ASSERT(pKernelChannel->errorContextType !=
                       ERROR_NOTIFIER_TYPE_NONE);
         }
@@ -548,6 +557,14 @@ kchannelConstruct_IMPL
         NV_ASSERT_OK(notifierStatus);
         if (notifierStatus == NV_OK)
         {
+            if ((pEccErrorContextRef != NULL) &&
+                (pEccErrorContextRef != pErrorContextRef))
+            {
+                NV_ASSERT_OK_OR_GOTO(status,
+                                     refAddDependant(pEccErrorContextRef, pResourceRef),
+                                     cleanup);
+                bEccErrorContextDepAdded = NV_TRUE;
+            }
             NV_ASSERT(pKernelChannel->eccErrorContextType !=
                       ERROR_NOTIFIER_TYPE_NONE);
         }
@@ -1089,6 +1106,14 @@ cleanup:
     if (status != NV_OK)
     {
         // Remove any dependencies we may have added; we don't want our destructor called when freeing anything below
+        if (bEccErrorContextDepAdded)
+        {
+            refRemoveDependant(pEccErrorContextRef, pResourceRef);
+        }
+        if (bErrorContextDepAdded)
+        {
+            refRemoveDependant(pErrorContextRef, pResourceRef);
+        }
         if (pKernelGraphicsContext != NULL)
         {
             refRemoveDependant(RES_GET_REF(pKernelGraphicsContext), pResourceRef);
