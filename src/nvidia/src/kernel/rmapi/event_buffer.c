@@ -374,7 +374,7 @@ eventbufferConstruct_IMPL
                                           hMemory,
                                           0,
                                           pMemory->Length,
-                                          &pKernelMap->recordBuffAddr,
+                                          &pKernelMap->vardataBuffAddr,
                                           flags);
                 if (status != NV_OK)
                 {
@@ -387,9 +387,8 @@ eventbufferConstruct_IMPL
                 if (status != NV_OK)
                     goto cleanup;
 
+                pKernelMap->vardataBuffAddr = pMemory->KernelVAddr;
             }
-
-            pKernelMap->vardataBuffAddr = pMemory->KernelVAddr;
 
             refAddDependant(pVardataRef, pCallContext->pResourceRef);
         }

@@ -581,6 +581,7 @@ refRemoveMapping
 )
 {
     if ((pCpuMapping->pContextRef != NULL) &&
+        (pCpuMapping->pContextRef != pResourceRef) &&
         !refHasAncestor(pResourceRef, pCpuMapping->pContextRef))
     {
         listRemove(&pCpuMapping->pContextRef->backRefs, pCpuMapping);

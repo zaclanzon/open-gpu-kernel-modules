@@ -1392,7 +1392,7 @@ cliresCtrlCmdSystemDebugCtrlRmMsg_IMPL
     {
         case NV0000_CTRL_SYSTEM_DEBUG_RMMSG_CTRL_CMD_GET:
         {
-            len = (NvU32)portStringLength(RmMsg);
+            len = (NvU32)portStringLengthSafe(RmMsg, NV0000_CTRL_SYSTEM_DEBUG_RMMSG_SIZE);
             portMemCopy(pParams->data, len, RmMsg, len);
             pParams->count = len;
             break;
@@ -1413,6 +1413,7 @@ cliresCtrlCmdSystemDebugCtrlRmMsg_IMPL
             }
 #endif
             portMemCopy(RmMsg, NV0000_CTRL_SYSTEM_DEBUG_RMMSG_SIZE, pParams->data, NV0000_CTRL_SYSTEM_DEBUG_RMMSG_SIZE);
+            RmMsg[NV0000_CTRL_SYSTEM_DEBUG_RMMSG_SIZE - 1] = '\0';
             break;
         }
         default:

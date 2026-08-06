@@ -2943,6 +2943,11 @@ void ConnectorImpl::fireEventsInternal()
                 }
             }
 #endif
+             // Remove device from dscEnabledDevices list before deletion to prevent dangling pointer
+             if (dscEnabledDevices.contains(dev))
+             {
+                 dscEnabledDevices.remove(dev);
+             }
             delete dev;
 
             // Now that the device is deleted, update the DP Tunnel BW allocation
@@ -7311,15 +7316,19 @@ void ConnectorImpl::disconnectDeviceList()
 {
     for (Device * d = enumDevices(0); d; d = enumDevices(d))
     {
-        ((DeviceImpl*)d)->plugged = false;
+        DeviceImpl* device = (DeviceImpl*)d;
+
+        device->plugged = false;
         // Clear the active bit (payload_allocate)
-        ((DeviceImpl*)d)->payloadAllocated = false;
+        device->payloadAllocated = false;
 
         // Deallocate object which may go stale after long pulse handling.
-        if (((DeviceImpl*)d)->isDeviceHDCPDetectionAlive)
+        if (device->isDeviceHDCPDetectionAlive)
         {
-            delete ((DeviceImpl*)d)->deviceHDCPDetection;
-            ((DeviceImpl*)d)->deviceHDCPDetection = NULL;
+            device->deviceHDCPDetection->destroy();
+            device->isHDCPCap = False;
+            device->deviceHDCPDetection = NULL;
+            device->isDeviceHDCPDetectionAlive = false;
         }
     }
 }

@@ -44,6 +44,23 @@ typedef struct {
 } SYSMEM_INSTRUMENTATION_BUFFER_LAYOUT;
 SYSMEM_INSTRUMENTATION_BUFFER_LAYOUT *sysmemLayout;
 
+static NV_STATUS
+_diagapiCtrlCmdUcodeInstrumentationValidateGfid
+(
+    NvU32 ucode,
+    NvU32 gfid
+)
+{
+    if (ucode == NV208F_UCODE_INSTRUMENTATION_GSP_TASK_VGPU)
+    {
+        NV_CHECK_OR_RETURN(LEVEL_ERROR,
+                           gfid > 0 && gfid <= VGPU_MAX_GFID,
+                           NV_ERR_INVALID_ARGUMENT);
+    }
+
+    return NV_OK;
+}
+
 NV_STATUS
 diagapiCoverageGetState_KERNEL
 (
@@ -152,6 +169,9 @@ diagapiCtrlCmdUcodeInstrumentationGetState_IMPL
     NV_STATUS status = NV_OK;
     OBJGPU *pGpu = GPU_RES_GET_GPU(pDiagApi);
 
+    NV_CHECK_OK_OR_RETURN(LEVEL_ERROR,
+        _diagapiCtrlCmdUcodeInstrumentationValidateGfid(pParams->ucode, pParams->gfid));
+
     if (IS_GSP_CLIENT(pGpu))
     {
         CALL_CONTEXT *pCallContext  = resservGetTlsCallContext();
@@ -181,6 +201,9 @@ diagapiCtrlCmdUcodeInstrumentationSetState_IMPL
     NV_STATUS status = NV_OK;
     OBJGPU *pGpu = GPU_RES_GET_GPU(pDiagApi);
 
+    NV_CHECK_OK_OR_RETURN(LEVEL_ERROR,
+        _diagapiCtrlCmdUcodeInstrumentationValidateGfid(pParams->ucode, pParams->gfid));
+
     if (IS_GSP_CLIENT(pGpu))
     {
         CALL_CONTEXT *pCallContext  = resservGetTlsCallContext();
@@ -209,6 +232,9 @@ diagapiCtrlCmdUcodeInstrumentationGetData_IMPL
 {
     NV_STATUS status = NV_OK;
     OBJGPU *pGpu = GPU_RES_GET_GPU(pDiagApi);
+
+    NV_CHECK_OK_OR_RETURN(LEVEL_ERROR,
+        _diagapiCtrlCmdUcodeInstrumentationValidateGfid(pParams->ucode, pParams->gfid));
 
     if (IS_GSP_CLIENT(pGpu))
     {

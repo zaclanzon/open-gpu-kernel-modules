@@ -4299,6 +4299,9 @@ gvaspaceCopyServerReservedPdes_IMPL
                 break;
             default:
                 NV_ASSERT(0);
+                NV_PRINTF(LEVEL_ERROR, "Unknown aperture: level %d aperture=%u\n",
+                          i, pCopyServerReservedPdesParams->levels[i].aperture);
+                status = NV_ERR_INVALID_ARGUMENT;
                 goto done;
         }
 
