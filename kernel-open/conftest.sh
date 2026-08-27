@@ -5174,6 +5174,21 @@ compile_test() {
             compile_check_conftest "$CODE" "NV_DRM_ATOMIC_COMMIT_STRUCT_PRESENT" "" "types"
         ;;
 
+        percpu_mm_counter)
+            #
+            # Determine if the mm_counter variable is percpu or an atomic
+            #
+            # Added by commit f1a7941 ("mm: convert mm's rss stats into percpu_counter") in 6.2.
+            #
+            CODE="
+            #include <linux/mm.h>
+            void conftest_percpu_mm_counter(struct mm_struct *mm) {
+                percpu_counter_add(&mm->rss_stat[0], 0);
+            }"
+
+            compile_check_conftest "$CODE" "NV_PERCPU_MM_COUNTER" "" "types"
+        ;;
+
         # When adding a new conftest entry, please use the correct format for
         # specifying the relevant upstream Linux kernel commit.  Please
         # avoid specifying -rc kernels, and only use SHAs that actually exist

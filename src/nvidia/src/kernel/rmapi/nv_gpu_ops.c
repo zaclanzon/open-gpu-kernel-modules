@@ -2622,8 +2622,8 @@ NV_STATUS nvGpuOpsDupAddressSpace(struct gpuDevice *device,
     portMemSet(vaSpaceInfo, 0, sizeof(*vaSpaceInfo));
 
     // TODO - Move this check to RMDupObject later.
-    // TODO: Acquired because serverutilGetResourceRef expects RMAPI lock. Necessary?
     // Find the device associated with the hUserVASpace and verify that the UUID belongs to it.
+    // TODO: Acquired because serverutilGetResourceRef expects RMAPI lock. Necessary?
     status = rmapiLockAcquire(RMAPI_LOCK_FLAGS_READ, RM_LOCK_MODULES_GPU_OPS);
     if (status != NV_OK)
         return status;

@@ -230,6 +230,7 @@ NV_CONFTEST_TYPE_COMPILE_TESTS += register_shrinker_has_format_arg
 NV_CONFTEST_TYPE_COMPILE_TESTS += nr_kernel_misc_reclaimable
 NV_CONFTEST_TYPE_COMPILE_TESTS += pci_resize_resource_has_exclude_bars_arg
 NV_CONFTEST_TYPE_COMPILE_TESTS += is_vma_write_locked_has_mm_lock_seq_arg
+NV_CONFTEST_TYPE_COMPILE_TESTS += percpu_mm_counter
 
 NV_CONFTEST_GENERIC_COMPILE_TESTS += dom0_kernel_present
 NV_CONFTEST_GENERIC_COMPILE_TESTS += nvidia_vgpu_kvm_build
