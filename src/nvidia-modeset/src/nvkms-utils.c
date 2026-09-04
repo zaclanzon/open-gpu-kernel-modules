@@ -139,6 +139,10 @@ static void LogInfoString(NVEvoInfoStringPtr pInfoString,
     int ret;
 
     if (pInfoString->s == NULL) {
+        /* Keep validation details available when no client buffer exists. */
+        if (nvDoDebugLogging()) {
+            nvVEvoLog(EVO_LOG_INFO, NV_INVALID_GPU_LOG_INDEX, format, ap);
+        }
         return;
     }
     if (size <= 1) {
