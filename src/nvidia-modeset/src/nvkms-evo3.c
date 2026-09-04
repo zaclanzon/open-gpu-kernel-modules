@@ -3260,6 +3260,11 @@ nvEvoSetCtrlIsModePossibleParams3(NVDispEvoPtr pDispEvo,
                                     head,
                                     &pEvoCaps->head[head].scalerCaps,
                                     pInput->head[head].possibleDscSliceCountMask)) {
+            if (nvDoDebugLogging()) {
+                nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+                    "IMP input head%u: scaling bounds or frame-idle calculation failed",
+                    head);
+            }
             return FALSE;
         }
 

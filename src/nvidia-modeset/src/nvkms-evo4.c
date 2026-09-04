@@ -1976,6 +1976,10 @@ EvoSetCtrlIsModePossibleParamsCA(
 
         if (pImp->head[i].bEnableDsc) {
             if (pInput->head[head].possibleDscSliceCountMask == 0) {
+                if (nvDoDebugLogging()) {
+                    nvEvoLogDev(pDispEvo->pDevEvo, EVO_LOG_INFO,
+                        "IMP input head%u: empty DSC slice mask", head);
+                }
                 return FALSE;
             }
             NvU32 minDscSliceCount =
@@ -1997,6 +2001,10 @@ EvoSetCtrlIsModePossibleParamsCA(
          * that head can be zero.
          */
         if (pInput->head[head].multiTileConfig.tilesMask == 0x0) {
+            if (nvDoDebugLogging()) {
+                nvEvoLogDev(pDispEvo->pDevEvo, EVO_LOG_INFO,
+                    "IMP input head%u: unchanged head has no tiles", head);
+            }
             return FALSE;
         }
 
@@ -2406,7 +2414,8 @@ EvoIsModePossibleCA(NVDispEvoPtr pDispEvo,
     NVC372_CTRL_IS_MODE_POSSIBLE_PARAMS *pImp =
         nvPreallocGet(pDevEvo, PREALLOC_TYPE_IMP_PARAMS, sizeof(*pImp));
     NvBool result = FALSE;
-    NvU32 ret;
+    NvU32 ret = NV_OK;
+    const char *failureStage = "input preparation";
 
     if (!EvoSetCtrlIsModePossibleParamsCA(pDispEvo, pInput, pImp)) {
         goto done;
@@ -2418,6 +2427,7 @@ EvoIsModePossibleCA(NVDispEvoPtr pDispEvo,
         goto done;
     }
 
+    failureStage = "RM validation";
     ret = nvRmApiControl(nvEvoGlobal.clientHandle,
                          pDevEvo->rmCtrlHandle,
                          NVC372_CTRL_CMD_IS_MODE_POSSIBLE,
@@ -2430,6 +2440,7 @@ EvoIsModePossibleCA(NVDispEvoPtr pDispEvo,
         goto done;
     }
 
+    failureStage = "missing RM tiling assignment";
     if (pImp->numTilingAssignments == 0) {
         nvAssert(!"No tiling assigment returned by RM-IMP");
         pImp->bIsPossible = FALSE;
@@ -2458,6 +2469,7 @@ EvoIsModePossibleCA(NVDispEvoPtr pDispEvo,
         }
     }
 
+    failureStage = "local tile/phywin assignment";
     if (!EvoAssignHwHeadMultiTileConfigDispOutputCA(pDispEvo,
                                                     pInput,
                                                     numRequiredTiles,
@@ -2469,6 +2481,35 @@ EvoIsModePossibleCA(NVDispEvoPtr pDispEvo,
     result = TRUE;
 
 done:
+    if (!result && nvDoDebugLogging()) {
+        nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+            "IMP failure: stage=%s rmStatus=0x%x possible=%u "
+            "heads=%u windows=%u assignments=%u hwTiles=%u hwPhywins=%u",
+            failureStage, ret, pImp->bIsPossible, pImp->numHeads,
+            pImp->numWindows, pImp->numTilingAssignments,
+            pDevEvo->numHwTiles, pDevEvo->numHwPhywins);
+        for (NvU32 head = 0; head < pDevEvo->numHeads; head++) {
+            const NVHwModeTimingsEvo *pTimings = pInput->head[head].pTimings;
+            if (pTimings == NULL) {
+                continue;
+            }
+            nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+                "IMP head%u: modeset=%u pixelClockKHz=%u depth=%u "
+                "dsc=%u slices=%u sliceMask=0x%x paired=%u "
+                "inputTiles=0x%x requiredTiles=%u outputTiles=0x%x "
+                "viewport=%ux%u->%ux%u",
+                head, pInput->head[head].modesetRequested,
+                pTimings->pixelClock, pInput->head[head].pixelDepth,
+                pInput->head[head].enableDsc, pInput->head[head].dscSliceCount,
+                pInput->head[head].possibleDscSliceCountMask,
+                pInput->head[head].b2Heads1Or,
+                pInput->head[head].multiTileConfig.tilesMask,
+                numRequiredTiles[head],
+                pOutput->head[head].multiTileConfig.tilesMask,
+                pTimings->viewPort.in.width, pTimings->viewPort.in.height,
+                pTimings->viewPort.out.width, pTimings->viewPort.out.height);
+        }
+    }
     nvEvoSetIsModePossibleDispOutput3(pImp, result, pOutput);
 
     nvPreallocRelease(pDevEvo, PREALLOC_TYPE_IMP_PARAMS);
