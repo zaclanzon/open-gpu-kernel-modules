@@ -961,6 +961,29 @@ repeatHwHeadsAssigment:
                                           &freeHwHeadsMask,
                                           FALSE /* b2Heads1Or */)) {
         if (pass == 1) {
+            if (nvDoDebugLogging()) {
+                nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                    "Hardware-head assignment failed: heads=%u free=0x%x "
+                    "single-head max pixel clock=%u kHz",
+                    pDevEvo->numHeads, freeHwHeadsMask,
+                    pDevEvo->gpus[sd].capabilities.head[0].maxPClkKHz);
+
+                for (NvU32 apiHead = 0;
+                     apiHead < pDevEvo->numApiHeads; apiHead++) {
+                    const NVProposedModeSetStateOneApiHead *pApiHead =
+                        &pProposedDisp->apiHead[apiHead];
+
+                    if (nvDpyIdListIsEmpty(pApiHead->dpyIdList)) {
+                        continue;
+                    }
+
+                    nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                        "  apiHead=%u changed=%u assigned=0x%x "
+                        "pixel clock=%u kHz",
+                        apiHead, pApiHead->changed,
+                        pApiHead->hwHeadsMask, pApiHead->timings.pixelClock);
+                }
+            }
             return FALSE;
         }
 
@@ -4674,4 +4697,3 @@ void nvApiHeadGetScanLine(const NVDispEvoRec *pDispEvo,
     pDispEvo->pDevEvo->hal->GetScanLine(pDispEvo, head, pScanLine,
                                         pInBlankingPeriod);
 }
-
