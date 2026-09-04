@@ -36,12 +36,22 @@
 
 //XXX Decouple functions like nvEvoLog used for logging from NVKMS
 
-#define nvKmsKapiLogDebug(__format...) \
-    nvEvoLogDebug(EVO_LOG_INFO, "[kapi] "__format)
+/* Keep KAPI diagnostics available through the runtime debug switch. */
+#define nvKmsKapiLogDebug(__format...)                         \
+    do {                                                     \
+        if (nvDoDebugLogging()) {                            \
+            nvEvoLog(EVO_LOG_INFO, "[kapi] "__format);         \
+        }                                                    \
+    } while (0)
 
-#define nvKmsKapiLogDeviceDebug(__device, __format, ...)          \
-    nvEvoLogDebug(EVO_LOG_INFO, "[kapi][GPU Id 0x%08x] "__format, \
-                  device->gpuId, ##__VA_ARGS__)
+#define nvKmsKapiLogDeviceDebug(__device, __format, ...)       \
+    do {                                                     \
+        if (nvDoDebugLogging()) {                            \
+            nvEvoLog(EVO_LOG_INFO,                            \
+                     "[kapi][GPU Id 0x%08x] "__format,        \
+                     (__device)->gpuId, ##__VA_ARGS__);       \
+        }                                                    \
+    } while (0)
 
 /*
  * Semaphore values used when using semaphore-based synchronization between
