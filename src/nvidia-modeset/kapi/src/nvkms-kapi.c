@@ -3496,10 +3496,9 @@ static NvBool KmsSetMode(
         nvKmsKapiLogDeviceDebug(
             device,
             "NVKMS_IOCTL_SET_MODE ioctl failed");
-        goto done;
     }
 
-    if (params->reply.status != NVKMS_SET_MODE_STATUS_SUCCESS)
+    if (!status || params->reply.status != NVKMS_SET_MODE_STATUS_SUCCESS)
     {
         int i;
 
