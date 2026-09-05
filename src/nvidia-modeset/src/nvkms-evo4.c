@@ -2854,6 +2854,10 @@ static void EvoSetWindowOwnerCA(
                                           pWindowChannel);
     }
 
+    /*
+     * Initialization may have queued a default binding that is not yet visible
+     * in PIO. Write the final owner even when the cached owner already matches.
+     */
     nvDmaSetStartEvoMethod(pDevEvo->core, NVCA7D_WINDOW_SET_CONTROL(win), 1);
     nvDmaSetEvoMethodData(pDevEvo->core,
         FLD_SET_DRF_NUM(CA7D, _WINDOW_SET_CONTROL, _OWNER, owner, oldControl));

@@ -240,6 +240,29 @@ int main(void)
     puts("PASS: subsequent activation unbinds the unused overlay with a "
          "non-interlocked update");
 
+    /*
+     * Initialization can queue a default binding before this helper runs.
+     * PIO still describes the previous unowned state. The final owner write
+     * must override the queued binding, even though PIO matches our target.
+     */
+    stateCache[NVCA7D_WINDOW_SET_CONTROL(2)] = 1;
+    stateCache[NVCA7D_WINDOW_SET_CONTROL(3)] =
+        NVCA7D_WINDOW_SET_CONTROL_OWNER_NONE;
+    stateCache[NVCA7D_WINDOW_SET_PHYSICAL(2)] = 3;
+    stateCache[NVCA7D_WINDOW_SET_PHYSICAL(3)] = 0;
+    memcpy(pendingMethods, stateCache, sizeof(stateCache));
+    pendingMethods[NVCA7D_WINDOW_SET_CONTROL(3)] = 1;
+    memset(&update, 0, sizeof(update));
+    update.windowMappingChanged = TRUE;
+    update.updateState.noCoreInterlockMask = 8;
+
+    EvoSetMultiTileConfigCA(&disp, 1, &timing, &dsc, &config, &update);
+
+    assert(GetPendingWindowOwner(3) == NVCA7D_WINDOW_SET_CONTROL_OWNER_NONE);
+    assert(update.windowMappingChanged);
+    assert(update.updateState.noCoreInterlockMask & 8);
+    puts("PASS: an unused overlay overrides a queued initialization binding");
+
     return 0;
 }
 '''
