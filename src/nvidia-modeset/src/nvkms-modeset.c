@@ -3519,7 +3519,8 @@ KickoffProposedModeSetHwState(
      * See comment about NVDisplay error code 37, in
      * function EvoInitWindowMapping3().
      */
-    NvBool decoupleFlipUpdates;
+    const NvBool decoupleFlipUpdates =
+        pModesetUpdateState->windowMappingChanged;
 
     /* Send methods to shut down any other unused heads, but don't update yet. */
     for (NvU32 apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
@@ -3540,9 +3541,6 @@ KickoffProposedModeSetHwState(
             pWorkArea,
             bypassComposition);
     }
-
-    /* PreUpdate may change physical window assignments on Blackwell. */
-    decoupleFlipUpdates = pModesetUpdateState->windowMappingChanged;
 
     if (!decoupleFlipUpdates) {
         /* Merge modeset and flip state updates together */
