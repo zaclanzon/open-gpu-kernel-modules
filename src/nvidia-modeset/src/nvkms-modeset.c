@@ -2442,6 +2442,19 @@ static NvBool IsCurrentMultiTileConfigOneApiHeadIncompatible(
             phywinsMask |= pMultiTileConfig->phywinsMask[layer];
         }
 
+        /* Physical windows may also move between layers on the same head. */
+        for (NvU32 layer = 0; layer < pDevEvo->head[head].numLayers; layer++) {
+            for (NvU32 otherLayer = 0;
+                    otherLayer < pDevEvo->head[head].numLayers; otherLayer++) {
+                if ((layer != otherLayer) &&
+                    ((pMultiTileConfig->phywinsMask[layer] &
+                      pProposedDisp->head[head].multiTileConfig.
+                          phywinsMask[otherLayer]) != 0x0)) {
+                    return TRUE;
+                }
+            }
+        }
+
         for (NvU32 tmpHead = 0; tmpHead < pDevEvo->numHeads; tmpHead++) {
             const NVHwHeadMultiTileConfigRec *pTmpMultiTileConfig =
                 &pProposedDisp->head[tmpHead].multiTileConfig;

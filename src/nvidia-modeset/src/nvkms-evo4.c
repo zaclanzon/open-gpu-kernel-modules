@@ -2034,6 +2034,7 @@ static void UnassignExtraOrIncompatibleTiles(
     const NVDispEvoRec *pDispEvo,
     NVHwHeadMultiTileConfigRec *pMultiTileConfig,
     const NVHwModeTimingsEvo *pTimings,
+    const struct NvKmsUsageBounds *pUsage,
     const NvU32 numRequiredTiles)
 {
     const NVDevEvoRec *pDevEvo = pDispEvo->pDevEvo;
@@ -2065,6 +2066,11 @@ static void UnassignExtraOrIncompatibleTiles(
             layer < ARRAY_LEN(pMultiTileConfig->phywinsMask); layer++) {
         NvU32 numReusedPhywins = 0;
         NvU32 phywin;
+
+        /* IMP excludes unusable layers; release their physical windows too. */
+        if (!pUsage->layer[layer].usable) {
+            continue;
+        }
         FOR_EACH_INDEX_IN_MASK(32, phywin,
             pMultiTileConfig->phywinsMask[layer]) {
             nvAssert(phywin < pDevEvo->numHwPhywins);
@@ -2138,6 +2144,7 @@ static NvBool
 AssignNewPhywinsIfNeeded(const NVDispEvoRec *pDispEvo,
                          NVHwHeadMultiTileConfigRec *pMultiTileConfig,
                          const NvU32 head,
+                         const struct NvKmsUsageBounds *pUsage,
                          NvU32 *pFreePhywinsMask)
 {
     const NVDevEvoRec *pDevEvo = pDispEvo->pDevEvo;
@@ -2146,6 +2153,12 @@ AssignNewPhywinsIfNeeded(const NVDispEvoRec *pDispEvo,
 
     for (NvU32 layer = 0; layer < pDevEvo->head[head].numLayers; layer++) {
         NvU32 phywin;
+
+        if (!pUsage->layer[layer].usable) {
+            nvAssert(outMultiTileConfig.phywinsMask[layer] == 0);
+            continue;
+        }
+
         FOR_EACH_INDEX_IN_MASK(32, phywin, outFreePhywinsMask) {
             nvAssert(phywin < pDevEvo->numHwPhywins);
 
@@ -2173,6 +2186,7 @@ static NvBool AssignNewTilesToHeadIfNeeded(
     NVHwHeadMultiTileConfigRec *pMultiTileConfig,
     const NvU32 head,
     const NVHwModeTimingsEvo *pTimings,
+    const struct NvKmsUsageBounds *pUsage,
     NvU32 numRequiredTiles,
     NvU32 *pFreeTilesMask,
     NvU32 *pFreePhywinsMask)
@@ -2187,21 +2201,20 @@ static NvBool AssignNewTilesToHeadIfNeeded(
     nvAssert(nvPopCount32(outMultiTileConfig.tilesMask) <= numRequiredTiles);
     nvAssert((outMultiTileConfig.tilesMask & outFreeTilesMask) == 0x0);
 
-    /* Return early if we already assigned sufficient tiles. */
-    if (deltaNumRequiredTiles == 0) {
-        return TRUE;
+    if (deltaNumRequiredTiles != 0) {
+        outMultiTileConfig.tilesMask |=
+            GetFreeTiles(pDispEvo, deltaNumRequiredTiles, requiredTileType,
+                         &outFreeTilesMask);
     }
 
-    outMultiTileConfig.tilesMask |=
-        GetFreeTiles(pDispEvo, deltaNumRequiredTiles, requiredTileType,
-                     &outFreeTilesMask);
+    /* Layer usage can change even when the tile count stays the same. */
 
     if (nvPopCount32(outMultiTileConfig.tilesMask) < numRequiredTiles) {
         return FALSE;
     }
 
     if (!AssignNewPhywinsIfNeeded(pDispEvo, &outMultiTileConfig, head,
-                                  &outFreePhywinsMask)) {
+                                  pUsage, &outFreePhywinsMask)) {
         return FALSE;
     }
 
@@ -2318,6 +2331,7 @@ AssignNewTilesToHeadsIfNeeded(
                                               pOutputMultiTileConfig,
                                               head,
                                               pTimings,
+                                              pInput->head[head].pUsage,
                                               numRequiredTiles[head],
                                               &freeTilesMask,
                                               &freePhywinsMask)) {
@@ -2385,6 +2399,7 @@ EvoAssignHwHeadMultiTileConfigDispOutputCA(
             UnassignExtraOrIncompatibleTiles(pDispEvo,
                                              &pOutput->head[head].multiTileConfig,
                                              pInput->head[head].pTimings,
+                                             pInput->head[head].pUsage,
                                              numRequiredTiles[head]);
         }
 
@@ -2828,7 +2843,9 @@ static void EvoSetMultiTileConfigCA(const NVDispEvoRec *pDispEvo,
         const NvU32 win = NV_EVO_CHANNEL_MASK_WINDOW_NUMBER(
             pWindowChannel->channelMask);
 
-        nvAssert(nvPopCount32(pConfig->tilesMask) == nvPopCount32(phywinsMask));
+        /* Unusable layers have no physical windows assigned. */
+        nvAssert((phywinsMask == 0) ||
+                 (nvPopCount32(pConfig->tilesMask) == nvPopCount32(phywinsMask)));
 
         nvDmaSetStartEvoMethod(pCoreChannel,
                                NVCA7D_WINDOW_SET_PHYSICAL(win), 1);
