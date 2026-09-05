@@ -2059,7 +2059,7 @@ static void UnassignExtraOrIncompatibleTiles(
         NvU32 numReusedPhywins = 0;
         NvU32 phywin;
 
-        /* IMP excludes unusable layers; release their physical windows too. */
+        /* Do not retain physical windows for layers excluded by IMP. */
         if (!pUsage->layer[layer].usable) {
             continue;
         }
@@ -2199,12 +2199,11 @@ static NvBool AssignNewTilesToHeadIfNeeded(
                          &outFreeTilesMask);
     }
 
-    /* Layer usage can change even when the tile count stays the same. */
-
     if (nvPopCount32(outMultiTileConfig.tilesMask) < numRequiredTiles) {
         return FALSE;
     }
 
+    /* Layer usage can change even when the tile count stays the same. */
     if (!AssignNewPhywinsIfNeeded(pDispEvo, &outMultiTileConfig, head,
                                   pUsage, &outFreePhywinsMask)) {
         return FALSE;
@@ -2342,7 +2341,8 @@ AssignNewTilesToHeadsIfNeeded(
                                                     pOutput,
                                                     &freeTilesMask,
                                                     &freePhywinsMask);
-                    /* Retry this head before moving to the next tile type. */
+
+                    /* Retry the failed head with the reclaimed resources. */
                     if (AssignNewTilesToHeadIfNeeded(pDispEvo,
                                                       pOutputMultiTileConfig,
                                                       head,
@@ -2801,8 +2801,10 @@ static void SetTileSize(NVEvoChannel *pCoreChannel,
     nvAssert(tileStart == hActive);
 }
 
-/* Physical window assignment changes need the same interlock handling as
- * logical window assignment changes in EvoInitWindowMapping3(). */
+/*
+ * Physical window assignment changes need the same interlock handling as
+ * logical window assignment changes in EvoInitWindowMapping3().
+ */
 static void EvoTrackPhysicalWindowChangeCA(
     NVDevEvoRec *pDevEvo,
     const NVEvoChannel *pWindowChannel,
@@ -2826,9 +2828,7 @@ static void EvoTrackPhysicalWindowChangeCA(
  * an unusable layer has neither an owner nor physical windows. This matches
  * the unassigned-window state established by overlay-off initialization.
  *
- * The caller has shut down heads whose layer ownership changes. During the
- * shutdown update itself, retain ownership; it is changed in the subsequent
- * modeset update, while the head is inactive.
+ * The caller has shut down heads whose layer ownership changes.
  */
 static void EvoSetWindowOwnerCA(
     NVDevEvoRec *pDevEvo,
@@ -2894,6 +2894,7 @@ static void EvoSetMultiTileConfigCA(const NVDispEvoRec *pDispEvo,
                                         oldPhywinsMask, phywinsMask,
                                         pModesetUpdateState);
 
+        /* Retain ownership during shutdown; change it in the next modeset. */
         if (pTimings != NULL) {
             EvoSetWindowOwnerCA(pDevEvo, pDispEvo->displayOwner,
                                 pWindowChannel, head, phywinsMask,

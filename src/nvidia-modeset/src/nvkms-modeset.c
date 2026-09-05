@@ -3497,17 +3497,6 @@ KickoffProposedModeSetHwState(
 {
     NVDevEvoRec *pDevEvo = pDispEvo->pDevEvo;
     NVEvoModesetUpdateState *pModesetUpdateState = &pWorkArea->modesetUpdateState;
-    /*
-     * If there is a change in window ownership, decouple window channel flips
-     * and the core channel update that performs a modeset.
-     *
-     * This allows window channel flips to be instead interlocked with the core
-     * channel update that sets the window usage bounds, avoiding window
-     * invalid usage exceptions.
-     *
-     * See comment about NVDisplay error code 37, in
-     * function EvoInitWindowMapping3().
-     */
     NvBool decoupleFlipUpdates;
 
     /* Send methods to shut down any other unused heads, but don't update yet. */
@@ -3530,7 +3519,18 @@ KickoffProposedModeSetHwState(
             bypassComposition);
     }
 
-    /* PreUpdate may change physical window assignments on Blackwell. */
+    /*
+     * If window ownership or physical assignments change, decouple window
+     * channel flips from the core channel update that performs a modeset.
+     * Check after PreUpdate, which may change physical assignments on Blackwell.
+     *
+     * This allows window channel flips to be instead interlocked with the core
+     * channel update that sets the window usage bounds, avoiding window
+     * invalid usage exceptions.
+     *
+     * See comment about NVDisplay error code 37, in
+     * function EvoInitWindowMapping3().
+     */
     decoupleFlipUpdates = pModesetUpdateState->windowMappingChanged;
 
     if (!decoupleFlipUpdates) {
