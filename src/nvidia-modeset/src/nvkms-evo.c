@@ -6012,6 +6012,7 @@ NvBool nvConstructHwModeTimingsImpCheckEvo(
         timingsParams[head].pMultiTileConfig = &multiTileConfig[head];
         timingsParams[head].enableDsc =
             (pDscInfo->type != NV_DSC_INFO_EVO_TYPE_DISABLED);
+        timingsParams[head].pDscInfo = pDscInfo;
         timingsParams[head].dscSliceCount = pDscInfo->sliceCount;
         timingsParams[head].possibleDscSliceCountMask =
             pDscInfo->possibleSliceCountMask;
@@ -7669,6 +7670,7 @@ static void AssignNVEvoIsModePossibleDispInput(
 
         pImpInput->head[head].pTimings = timingsParams[head].pTimings;
         pImpInput->head[head].enableDsc = timingsParams[head].enableDsc;
+        pImpInput->head[head].pDscInfo = timingsParams[head].pDscInfo;
         pImpInput->head[head].dscSliceCount = timingsParams[head].dscSliceCount;
         pImpInput->head[head].possibleDscSliceCountMask =
             timingsParams[head].possibleDscSliceCountMask;

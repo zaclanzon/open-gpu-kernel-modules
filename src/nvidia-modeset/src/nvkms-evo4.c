@@ -2404,6 +2404,94 @@ EvoAssignHwHeadMultiTileConfigDispOutputCA(
     return TRUE;
 }
 
+/* Local diagnostic: compare RM inputs, then reject this target before any
+ * tile assignment or hardware update. Never use the comparison as a modeset. */
+static NvBool EvoCompareDscImpInputsCA(
+    NVDispEvoPtr pDispEvo,
+    const NVEvoIsModePossibleDispInput *pInput,
+    const NVC372_CTRL_IS_MODE_POSSIBLE_PARAMS *pOriginal)
+{
+    NVDevEvoPtr pDevEvo = pDispEvo->pDevEvo;
+    NvU32 fastDscHeads = 0;
+    NVC372_CTRL_IS_MODE_POSSIBLE_PARAMS *pTest;
+
+    if (!nvDoDebugLogging() || pOriginal->numHeads != 4) {
+        return FALSE;
+    }
+    for (NvU32 i = 0; i < pOriginal->numHeads; i++) {
+        if (pOriginal->head[i].bEnableDsc &&
+            pOriginal->head[i].maxPixelClkKHz > 1500000) {
+            fastDscHeads++;
+        }
+    }
+    if (fastDscHeads < 2) {
+        return FALSE;
+    }
+
+    pTest = nvAlloc(sizeof(*pTest));
+    if (pTest == NULL) {
+        nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+            "IMP comparison: allocation failed; target remains rejected");
+        return TRUE;
+    }
+
+    for (NvU32 variant = 0; variant < 2; variant++) {
+        NvU32 ret;
+        nvkms_memcpy(pTest, pOriginal, sizeof(*pTest));
+        for (NvU32 i = 0; i < pTest->numHeads; i++) {
+            const NvU32 head = pTest->head[i].headIndex;
+            const NVDscInfoEvoRec *pDsc = pInput->head[head].pDscInfo;
+            NvU32 bpp = 0;
+            if (pDsc != NULL) {
+                if (pDsc->type == NV_DSC_INFO_EVO_TYPE_DP) {
+                    bpp = pDsc->dp.bitsPerPixelX16;
+                } else if (pDsc->type == NV_DSC_INFO_EVO_TYPE_HDMI) {
+                    bpp = pDsc->hdmi.bitsPerPixelX16;
+                }
+            }
+            if (variant != 0 && pTest->head[i].bEnableDsc) {
+                if (bpp == 0 || bpp > 0xffff) {
+                    nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+                        "IMP comparison: head%u has invalid target bpp %u; target rejected",
+                        head, bpp);
+                    nvFree(pTest);
+                    return TRUE;
+                }
+                pTest->head[i].dscTargetBppX16 = bpp;
+            }
+            nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+                "IMP compare variant%u head%u: clock=%u dsc=%u bppX16=%u sliceMask=0x%x",
+                variant, head, pTest->head[i].maxPixelClkKHz,
+                pTest->head[i].bEnableDsc, pTest->head[i].dscTargetBppX16,
+                pTest->head[i].possibleDscSliceCountMask);
+        }
+        ret = nvRmApiControl(nvEvoGlobal.clientHandle,
+                             pDevEvo->rmCtrlHandle,
+                             NVC372_CTRL_CMD_IS_MODE_POSSIBLE,
+                             pTest, sizeof(*pTest));
+        nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+            "IMP compare variant%u: status=0x%x possible=%u windows=%u assignments=%u dispClkKHz=%u",
+            variant, ret, pTest->bIsPossible, pTest->numWindows,
+            pTest->numTilingAssignments, pTest->dispClkKHz);
+        if (ret == NV_OK && pTest->bIsPossible &&
+            pTest->numTilingAssignments > 0) {
+            const NvU32 count = pTest->tilingAssignments[0].numTiles;
+            if (count <= ARRAY_LEN(pTest->tileList)) {
+                for (NvU32 i = 0; i < count; i++) {
+                    nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+                        "IMP compare variant%u tile%u: impHead=%u slices=%u",
+                        variant, i, pTest->tileList[i].head,
+                        pTest->tileList[i].headDscSlices);
+                }
+            }
+        }
+    }
+    nvFree(pTest);
+    nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+        "IMP comparison complete: target rejected intentionally before hardware assignment");
+    return TRUE;
+}
+
 static void
 EvoIsModePossibleCA(NVDispEvoPtr pDispEvo,
                     const NVEvoIsModePossibleDispInput *pInput,
@@ -2424,6 +2512,11 @@ EvoIsModePossibleCA(NVDispEvoPtr pDispEvo,
     if (pImp->numHeads == 0) {
         pImp->bIsPossible = TRUE;
         result = TRUE;
+        goto done;
+    }
+
+    if (EvoCompareDscImpInputsCA(pDispEvo, pInput, pImp)) {
+        failureStage = "comparison-only diagnostic veto";
         goto done;
     }
 

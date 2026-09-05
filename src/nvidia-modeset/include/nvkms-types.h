@@ -2934,6 +2934,7 @@ typedef struct {
         /* pTimings == NULL => this head is disabled */
         const NVHwModeTimingsEvo *pTimings;
         NvBool enableDsc;
+        const NVDscInfoEvoRec *pDscInfo;
         NvBool b2Heads1Or;
         enum nvKmsPixelDepth pixelDepth;
         const struct NvKmsUsageBounds *pUsage;

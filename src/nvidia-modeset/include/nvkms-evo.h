@@ -220,6 +220,7 @@ typedef struct _NVValidateImpOneDispHeadParamsRec
     NVHwModeTimingsEvoPtr pTimings;
     NVHwHeadMultiTileConfigRec *pMultiTileConfig;
     NvBool enableDsc;
+    const NVDscInfoEvoRec *pDscInfo;
     NvU32 dscSliceCount;
     NvU32 possibleDscSliceCountMask;
     NvBool b2Heads1Or;

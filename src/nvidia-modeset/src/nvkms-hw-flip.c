@@ -2400,6 +2400,7 @@ NvBool nvAllocatePreFlipBandwidth(NVDevEvoPtr pDevEvo,
         timingsParams[head].pTimings = &pHeadState->timings;
         timingsParams[head].enableDsc = (pHeadState->dscInfo.type !=
             NV_DSC_INFO_EVO_TYPE_DISABLED);
+        timingsParams[head].pDscInfo = &pHeadState->dscInfo;
         timingsParams[head].dscSliceCount = pHeadState->dscInfo.sliceCount;
         timingsParams[head].possibleDscSliceCountMask =
             pHeadState->dscInfo.possibleSliceCountMask;
@@ -2573,6 +2574,7 @@ static void LowerDispBandwidth(void *dataPtr, NvU32 dataU32)
         timingsParams[head].pTimings = &pHeadState->timings;
         timingsParams[head].enableDsc = (pHeadState->dscInfo.type !=
             NV_DSC_INFO_EVO_TYPE_DISABLED);
+        timingsParams[head].pDscInfo = &pHeadState->dscInfo;
         timingsParams[head].dscSliceCount = pHeadState->dscInfo.sliceCount;
         timingsParams[head].possibleDscSliceCountMask =
             pHeadState->dscInfo.possibleSliceCountMask;

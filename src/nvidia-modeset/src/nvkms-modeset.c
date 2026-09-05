@@ -1468,6 +1468,7 @@ ValidateProposedModeSetHwStateOneDispImp(NVDispEvoPtr pDispEvo,
             timingsParams[head].pTimings = &pProposedHead->timings;
             timingsParams[head].enableDsc = (pProposedApiHead->dscInfo.type !=
                 NV_DSC_INFO_EVO_TYPE_DISABLED);
+            timingsParams[head].pDscInfo = &pProposedApiHead->dscInfo;
             timingsParams[head].dscSliceCount =
                 pProposedApiHead->dscInfo.sliceCount;
             timingsParams[head].possibleDscSliceCountMask =
