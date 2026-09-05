@@ -2416,7 +2416,32 @@ static NvBool IsCurrentMultiTileConfigOneApiHeadIncompatible(
         NvU32 phywinsMask = 0x0;
 
         for (NvU32 layer = 0; layer < pDevEvo->head[head].numLayers; layer++) {
+            const NvU32 proposedMask =
+                pProposedDisp->head[head].multiTileConfig.phywinsMask[layer];
+
+            /*
+             * Adding or removing a layer's physical assignment also binds or
+             * unbinds its window channel. Shut the head down before changing
+             * that ownership, even if no resource moves to another window.
+             */
+            if ((pMultiTileConfig->phywinsMask[layer] == 0) !=
+                    (proposedMask == 0)) {
+                return TRUE;
+            }
             phywinsMask |= pMultiTileConfig->phywinsMask[layer];
+        }
+
+        /* Physical windows may also move between layers on the same head. */
+        for (NvU32 layer = 0; layer < pDevEvo->head[head].numLayers; layer++) {
+            for (NvU32 otherLayer = 0;
+                    otherLayer < pDevEvo->head[head].numLayers; otherLayer++) {
+                if ((layer != otherLayer) &&
+                    ((pMultiTileConfig->phywinsMask[layer] &
+                      pProposedDisp->head[head].multiTileConfig.
+                          phywinsMask[otherLayer]) != 0x0)) {
+                    return TRUE;
+                }
+            }
         }
 
         for (NvU32 tmpHead = 0; tmpHead < pDevEvo->numHeads; tmpHead++) {
@@ -3483,8 +3508,7 @@ KickoffProposedModeSetHwState(
      * See comment about NVDisplay error code 37, in
      * function EvoInitWindowMapping3().
      */
-    const NvBool decoupleFlipUpdates =
-        pModesetUpdateState->windowMappingChanged;
+    NvBool decoupleFlipUpdates;
 
     /* Send methods to shut down any other unused heads, but don't update yet. */
     for (NvU32 apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
@@ -3505,6 +3529,9 @@ KickoffProposedModeSetHwState(
             pWorkArea,
             bypassComposition);
     }
+
+    /* PreUpdate may change physical window assignments on Blackwell. */
+    decoupleFlipUpdates = pModesetUpdateState->windowMappingChanged;
 
     if (!decoupleFlipUpdates) {
         /* Merge modeset and flip state updates together */
