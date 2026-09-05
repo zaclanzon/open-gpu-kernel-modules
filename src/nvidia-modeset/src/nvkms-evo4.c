@@ -2821,6 +2821,31 @@ static void SetTileSize(NVEvoChannel *pCoreChannel,
     nvAssert(tileStart == hActive);
 }
 
+/* Physical window assignment changes need the same interlock handling as
+ * logical window assignment changes in EvoInitWindowMapping3(). */
+static void EvoTrackPhysicalWindowChangeCA(
+    NVDevEvoRec *pDevEvo,
+    const NVEvoChannel *pWindowChannel,
+    const NvU32 oldMask,
+    const NvU32 newMask,
+    NVEvoModesetUpdateState *pModesetUpdateState)
+{
+    if (oldMask == newMask) {
+        return;
+    }
+
+    pModesetUpdateState->windowMappingChanged = TRUE;
+    nvDisableCoreInterlockUpdateState(pDevEvo,
+                                      &pModesetUpdateState->updateState,
+                                      pWindowChannel);
+    if (nvDoDebugLogging()) {
+        nvEvoLogDev(pDevEvo, EVO_LOG_INFO,
+            "Physical window%u assignment: 0x%x -> 0x%x; decoupling core update",
+            NV_EVO_CHANNEL_MASK_WINDOW_NUMBER(pWindowChannel->channelMask),
+            oldMask, newMask);
+    }
+}
+
 static void EvoSetMultiTileConfigCA(const NVDispEvoRec *pDispEvo,
                                     const NvU32 head,
                                     const NVHwModeTimingsEvo *pTimings,
@@ -2842,6 +2867,15 @@ static void EvoSetMultiTileConfigCA(const NVDispEvoRec *pDispEvo,
         const NVEvoChannel *pWindowChannel = pDevEvo->head[head].layer[layer];
         const NvU32 win = NV_EVO_CHANNEL_MASK_WINDOW_NUMBER(
             pWindowChannel->channelMask);
+
+        const void *pCoreDma =
+            pDevEvo->pSubDevices[pDispEvo->displayOwner]->pCoreDma;
+        const NvU32 oldPhywinsMask =
+            nvDmaLoadPioMethod(pCoreDma, NVCA7D_WINDOW_SET_PHYSICAL(win));
+
+        EvoTrackPhysicalWindowChangeCA(pDevEvo, pWindowChannel,
+                                        oldPhywinsMask, phywinsMask,
+                                        pModesetUpdateState);
 
         /* Unusable layers have no physical windows assigned. */
         nvAssert((phywinsMask == 0) ||
