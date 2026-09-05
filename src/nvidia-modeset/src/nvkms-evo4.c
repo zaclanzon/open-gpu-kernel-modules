@@ -2342,7 +2342,17 @@ AssignNewTilesToHeadsIfNeeded(
                                                     pOutput,
                                                     &freeTilesMask,
                                                     &freePhywinsMask);
-                    break;
+                    /* Retry this head before moving to the next tile type. */
+                    if (AssignNewTilesToHeadIfNeeded(pDispEvo,
+                                                      pOutputMultiTileConfig,
+                                                      head,
+                                                      pTimings,
+                                                      pInput->head[head].pUsage,
+                                                      numRequiredTiles[head],
+                                                      &freeTilesMask,
+                                                      &freePhywinsMask)) {
+                        continue;
+                    }
                 }
 
                 return FALSE;
@@ -2362,7 +2372,8 @@ EvoAssignHwHeadMultiTileConfigDispOutputCA(
 {
     const NVDevEvoRec *pDevEvo = pDispEvo->pDevEvo;
     NvU32 freeTilesMask = NVBIT(pDevEvo->numHwTiles) - 1;
-    NvU32 freePhywinsMask = NVBIT(pDevEvo->numHwPhywins) - 1;
+    /* The capability format allows 32 windows; avoid a 32-bit shift by 32. */
+    NvU32 freePhywinsMask = (NvU32)(NVBIT64(pDevEvo->numHwPhywins) - 1);
 
     for (NvU32 head = 0; head < pDevEvo->numHeads; head++) {
         if (pInput->head[head].pTimings == NULL) {

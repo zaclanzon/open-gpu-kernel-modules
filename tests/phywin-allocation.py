@@ -24,6 +24,7 @@ typedef int NvBool;
 #define NVKMS_MAX_HEADS_PER_DISP 4
 #define NV_YUV420_MODE_HW 1
 #define NVBIT(x) (1U << (x))
+#define NVBIT64(x) (UINT64_C(1) << (x))
 #define ARRAY_LEN(x) (sizeof(x) / sizeof((x)[0]))
 #define nvAssert(x) assert(x)
 #define nvPopCount32(x) ((NvU32)__builtin_popcount(x))
