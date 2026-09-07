@@ -1,0 +1,32 @@
+name: Modeset regressions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: modeset-regressions-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  software-models:
+    name: Sanitized modeset software models
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ASAN_OPTIONS: detect_leaks=0
+      UBSAN_OPTIONS: halt_on_error=1
+    steps:
+      - name: Check out production sources and regression fixtures
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Fetch pinned upstream comparison
+        run: git fetch --no-tags --depth=1 origin e4a5faa2567f28c8eabe0ebb6422b6d0abcf37eb
+      - name: Run all five suites with ASan and UBSan
+        run: bash tests/run.sh
