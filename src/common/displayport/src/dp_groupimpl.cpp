@@ -143,6 +143,20 @@ void GroupImpl::insert(Device * dev)
     DP_ASSERT(!headInFirmware && "Cannot add or remove from a firmware group.  You must perform a modeset away from the device");
     DeviceImpl * di = (DeviceImpl *)dev;
 
+    // Capture the sink state before re-insertion or a recovery modeset changes it.
+    if (isHeadAttached() && !parent->linkUseMultistream() &&
+        dscModeActive != DSC_MODE_NONE)
+    {
+        bool sinkDscEnabled = false;
+        bool readSucceeded = di->getDscEnable(&sinkDscEnabled);
+
+        DP_PRINTF(DP_NOTICE,
+                  "DP-SST-RETURN> head=%u dsc-mode=%u tracked=%u read-ok=%u enabled=%u",
+                  headIndex, (NvU32)dscModeActive,
+                  (NvU32)parent->dscEnabledDevices.contains(dev),
+                  (NvU32)readSucceeded, (NvU32)sinkDscEnabled);
+    }
+
     if (isHeadAttached())
     {
         if (di->activeGroup && di->activeGroup != this)
