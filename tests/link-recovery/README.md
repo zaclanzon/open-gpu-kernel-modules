@@ -16,11 +16,21 @@ In a tracing sandbox where LeakSanitizer cannot inspect the process, use `ASAN_O
 
 These are control-flow tests. They do not execute real kernel locking, hardware, MST payload allocation, DSC, HDMI FRL training, or HDR/LUT programming. The full kernel build checks API integration. Hardware and kernel lockdep validation remain necessary before treating the change as production validated.
 
+The SST DSC tests compile the production group insertion/removal methods and
+connector DSC state setter against a simulated sink. They reproduce a device
+leaving an attached DSC group, losing its sink enable bit, and returning. They
+check restoration before the group update, tracking-list repair, single/dual
+DSC modes, exclusion of inactive/MST/non-DP/incapable devices, conflicting group
+ownership, and configuration failure followed by a retry. Sink configuration
+is simulated; these tests do not establish that DSC restoration alone recovers
+the physical display.
+
 ## Test organization
 
 - `test-worker.c` contains named recovery scenarios with separate setup, actions, and assertions. Failure locations use an enum rather than numbered cases.
 - `mock-drm.h` provides the kernel types needed by the worker. `mock-drm.c` keeps device state, injected failures, and observed calls in one fixture. One-shot errors and persistent post-swap failures are distinguished explicitly.
 - `test-dp.cpp` checks every selected/attaching/failed head combination and verifies that transient head assignments preserve recovery events. Its layout follows the surrounding DisplayPort C++ code.
+- `test-sst-dsc.cpp` exercises the SST return path using production group methods and the connector DSC state setter. The production DSC enum is included in the generated test.
 - `run.py` assembles and compiles the production fragments. Compiler and assertion diagnostics point back to the original source files and lines. Function extraction requires one matching signature and uses a brace scanner, so it is not a general C/C++ parser.
 
 The C tests follow the nearby nvidia-drm style: four-space indentation, function braces on their own lines, and one statement per line. Each worker scenario prints its name before running, so an assertion failure identifies the scenario as well as the source location.

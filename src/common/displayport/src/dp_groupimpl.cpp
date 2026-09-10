@@ -165,6 +165,21 @@ void GroupImpl::insert(Device * dev)
             return;
         }
         di->activeGroup = this;
+
+        // A returning SST sink may have lost DSC state while the head stayed
+        // attached. Restore the sink and its tracking entry without a modeset.
+        // HDMI converters use a separate DSC configuration path during attach.
+        if (!parent->linkUseMultistream() &&
+            di->getConnectorType() == connectorDisplayPort &&
+            di->isDSCPossible() &&
+            (dscModeActive == DSC_SINGLE || dscModeActive == DSC_DUAL))
+        {
+            bool restored = parent->setDeviceDscState(dev, true);
+
+            DP_PRINTF(restored ? DP_NOTICE : DP_WARNING,
+                      "DP-SST-RESTORE> head=%u success=%u",
+                      headIndex, (NvU32)restored);
+        }
     }
 
     members.insertFront(di);
