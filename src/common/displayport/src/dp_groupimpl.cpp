@@ -161,8 +161,7 @@ void GroupImpl::insert(Device * dev)
         {
             if (!parent->setDeviceDscState(dev, true))
             {
-                DP_PRINTF(DP_WARNING,
-                          "DP-GROUP> Failed to restore DSC for active SST head %u", headIndex);
+                DP_PRINTF(DP_WARNING, "DP-GRP: failed to restore DSC state for active SST head %u.", headIndex);
             }
         }
     }
