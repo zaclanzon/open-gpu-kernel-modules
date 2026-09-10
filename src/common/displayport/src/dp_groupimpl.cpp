@@ -168,7 +168,6 @@ void GroupImpl::insert(Device * dev)
 
         // A returning SST sink may have lost DSC state while the head stayed
         // attached. Restore the sink and its tracking entry without a modeset.
-        // HDMI converters use a separate DSC configuration path during attach.
         if (!parent->linkUseMultistream() &&
             di->getConnectorType() == connectorDisplayPort &&
             di->isDSCPossible() &&
