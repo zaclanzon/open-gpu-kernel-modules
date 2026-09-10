@@ -1,264 +1,531 @@
 /* SPDX-License-Identifier: MIT */
-static void reset(unsigned int count)
+
+static void reset_test_state(unsigned int connector_count)
 {
-    memset(connectors, 0, sizeof(connectors));
-    memset(conn_states, 0, sizeof(conn_states));
-    memset(crtcs, 0, sizeof(crtcs));
-    memset(crtc_states, 0, sizeof(crtc_states));
-    memset(&nv_device, 0, sizeof(nv_device));
-    connector_count = count;
-    now_ms = 100;
-    error_logs = success_logs = hotplugs = commits = allocations = frees = backoffs = 0;
-    alloc_fail = connector_error = crtc_error = commit_error = late_error = 0;
-    lock_calls = lock_error_at = event_on_commit = pause_on_commit = 0;
-    unplug_on_backoff = replace_mode_on_backoff = false;
+    unsigned int i;
+
+    assert(connector_count <= MOCK_MAX_CONNECTORS);
+    assert(mock.allocation_count == mock.free_count);
+    memset(&mock, 0, sizeof(mock));
+    mock.connector_count = connector_count;
+    mock.time_ms = 100;
+    mock.device.nv = &mock.nv_device;
+    mock.nv_device.dev = &mock.device;
+    mock.nv_device.enable_event_handling.counter = 1;
     nv_drm_link_recovery_enabled = true;
-    device.nv = &nv_device;
-    nv_device.dev = &device;
-    nv_device.enable_event_handling.counter = 1;
-    for (unsigned int i = 0; i < count; i++) {
-        connectors[i].base.dev = &device;
-        connectors[i].base.state = &conn_states[i];
-        connectors[i].base.status = connector_status_connected;
-        connectors[i].base.name = "mock";
-        conn_states[i].crtc = &crtcs[i];
-        conn_states[i].color = 10;
-        crtcs[i].state = &crtc_states[i];
-        crtc_states[i].active = true;
-        crtc_states[i].user_mode = 240 + i;
+
+    for (i = 0; i < connector_count; i++) {
+        mock.connectors[i].base.dev = &mock.device;
+        mock.connectors[i].base.state = &mock.connector_states[i];
+        mock.connectors[i].base.status = connector_status_connected;
+        mock.connectors[i].base.name = "mock";
+        mock.connector_states[i].crtc = &mock.crtcs[i];
+        mock.connector_states[i].color = 10;
+        mock.crtcs[i].state = &mock.crtc_states[i];
+        mock.crtc_states[i].active = true;
+        mock.crtc_states[i].user_mode = 240 + i;
     }
 }
-static void run_work(void)
+
+/* Run one worker pass. Each test controls the clock and any later passes. */
+static void run_recovery_work(void)
 {
-    nv_device.link_recovery_work.pending = false;
-    nv_drm_handle_link_recovery_work(&nv_device.link_recovery_work.work);
-    assert(allocations == frees);
+    mock.nv_device.link_recovery_work.pending = false;
+    nv_drm_handle_link_recovery_work(&mock.nv_device.link_recovery_work.work);
+    assert(mock.allocation_count == mock.free_count);
 }
-static void request(void) { nv_drm_queue_link_recovery(&connectors[0]); }
-static void test_disabled_and_idle(void)
+
+static void request_recovery(void)
 {
-    reset(1); run_work(); assert(commits == 0);
+    nv_drm_queue_link_recovery(&mock.connectors[0]);
+}
+
+static void test_idle_worker(void)
+{
+    reset_test_state(1);
+    run_recovery_work();
+    assert(mock.commit_count == 0);
+}
+
+static void test_recovery_disabled(void)
+{
+    reset_test_state(1);
     nv_drm_link_recovery_enabled = false;
-    request(); assert(!nv_device.link_recovery_work.pending);
+    request_recovery();
+    assert(!mock.nv_device.link_recovery_work.pending);
+
     nv_drm_link_recovery_enabled = true;
-    nv_device.enable_event_handling.counter = 0;
-    request(); assert(!nv_device.link_recovery_work.pending);
-    nv_device.enable_event_handling.counter = 1;
-    nv_device.link_recovery_paused = true;
-    request(); assert(!nv_device.link_recovery_work.pending);
-    nv_device.link_recovery_paused = false;
-    request(); nv_drm_link_recovery_enabled = false; run_work(); assert(!commits);
-    puts("PASS disabled, paused, stopped and idle queues");
+    mock.nv_device.enable_event_handling.counter = 0;
+    request_recovery();
+    assert(!mock.nv_device.link_recovery_work.pending);
+
+    mock.nv_device.enable_event_handling.counter = 1;
+    mock.nv_device.link_recovery_paused = true;
+    request_recovery();
+    assert(!mock.nv_device.link_recovery_work.pending);
+
+    /* Disabling recovery also stops work that was already queued. */
+    mock.nv_device.link_recovery_paused = false;
+    request_recovery();
+    nv_drm_link_recovery_enabled = false;
+    run_recovery_work();
+    assert(mock.commit_count == 0);
 }
-static void test_inactive_and_unplugged(void)
+
+static void test_inactive_outputs(void)
 {
-    for (unsigned int scenario = 0; scenario < 4; scenario++) {
-        reset(1); request();
-        switch (scenario) {
-        case 0: connectors[0].base.status = connector_status_disconnected; break;
-        case 1: connectors[0].base.state = NULL; break;
-        case 2: conn_states[0].crtc = NULL; break;
-        case 3: crtc_states[0].active = false; break;
+    enum inactive_output {
+        MISSING_CONNECTOR_STATE,
+        UNASSIGNED_CONNECTOR,
+        INACTIVE_CRTC,
+        INACTIVE_OUTPUT_COUNT
+    } output;
+
+    for (output = 0; output < INACTIVE_OUTPUT_COUNT; output++) {
+        reset_test_state(1);
+        request_recovery();
+
+        switch (output) {
+        case MISSING_CONNECTOR_STATE:
+            mock.connectors[0].base.state = NULL;
+            break;
+        case UNASSIGNED_CONNECTOR:
+            mock.connector_states[0].crtc = NULL;
+            break;
+        case INACTIVE_CRTC:
+            mock.crtc_states[0].active = false;
+            break;
+        default:
+            assert(false);
         }
-        run_work();
-        assert(commits == 0 && !hotplugs);
-        if (scenario == 0) {
-            assert(connectors[0].link_recovery_handled_generation == 0);
-            assert(nv_device.link_recovery_work.pending);
-            now_ms += NV_DRM_LINK_RECOVERY_DETECT_GRACE_MS;
-            run_work();
-            assert(!nv_device.link_recovery_work.pending);
-        }
-        assert(connectors[0].link_recovery_handled_generation == 1);
-        assert(connectors[0].link_recovery_policy.attempts == 0);
+
+        run_recovery_work();
+        assert(mock.commit_count == 0);
+        assert(mock.hotplug_event_count == 0);
+        assert(mock.connectors[0].link_recovery_handled_generation == 1);
+        assert(mock.connectors[0].link_recovery_policy.attempts == 0);
     }
-    puts("PASS unplug, missing state, disabled connector and inactive CRTC");
 }
-static void test_coalesce_and_new_events(void)
+
+static void test_disconnected_output_expires(void)
 {
-    reset(1); request(); unsigned int deadline = nv_device.link_recovery_work.deadline;
-    now_ms += 50; request(); request();
-    assert(nv_device.link_recovery_work.deadline == deadline);
-    run_work(); assert(commits == 1 && success_logs == 1 && !hotplugs);
-    assert(committed_mode == 240 && committed_color == 10);
-    assert(connectors[0].link_recovery_handled_generation == 3);
-    run_work(); assert(commits == 1);
-    request(); event_on_commit = 1; run_work();
-    assert(nv_device.link_recovery_work.pending);
-    assert(connectors[0].link_recovery_handled_generation == 4);
-    assert(connectors[0].link_recovery_generation.counter == 5);
-    run_work(); assert(commits == 3);
-    puts("PASS coalescing, current mode/color preservation and event during commit");
+    reset_test_state(1);
+    request_recovery();
+    mock.connectors[0].base.status = connector_status_disconnected;
+    run_recovery_work();
+
+    assert(mock.connectors[0].link_recovery_handled_generation == 0);
+    assert(mock.nv_device.link_recovery_work.pending);
+
+    mock.time_ms += NV_DRM_LINK_RECOVERY_DETECT_GRACE_MS;
+    run_recovery_work();
+    assert(!mock.nv_device.link_recovery_work.pending);
+    assert(mock.commit_count == 0);
+    assert(mock.hotplug_event_count == 0);
+    assert(mock.connectors[0].link_recovery_handled_generation == 1);
+    assert(mock.connectors[0].link_recovery_policy.attempts == 0);
 }
-static void test_error_paths(void)
+
+static void test_event_coalescing(void)
 {
-    for (unsigned int scenario = 0; scenario < 5; scenario++) {
-        reset(1); request();
-        switch (scenario) {
-        case 0: alloc_fail = 1; break;
-        case 1: connector_error = ENOMEM; break;
-        case 2: crtc_error = ENOMEM; break;
-        case 3: commit_error = EINVAL; break;
-        case 4: late_error = EIO; break;
-        }
-        run_work();
-        assert(conn_states[0].link_status == DRM_MODE_LINK_STATUS_BAD);
-        assert(error_logs == 1 && hotplugs == 1 && success_logs == 0);
-        assert(nv_device.link_recovery_work.pending);
-        late_error = 0; run_work();
-        assert(conn_states[0].link_status == DRM_MODE_LINK_STATUS_GOOD);
-        assert(success_logs == 1);
+    unsigned int original_deadline;
+
+    reset_test_state(1);
+    request_recovery();
+    original_deadline = mock.nv_device.link_recovery_work.deadline_ms;
+
+    mock.time_ms += 50;
+    request_recovery();
+    request_recovery();
+    assert(mock.nv_device.link_recovery_work.deadline_ms == original_deadline);
+
+    run_recovery_work();
+    assert(mock.commit_count == 1);
+    assert(mock.success_log_count == 1);
+    assert(mock.hotplug_event_count == 0);
+    assert(mock.committed_mode == 240);
+    assert(mock.committed_color == 10);
+    assert(mock.connectors[0].link_recovery_handled_generation == 3);
+
+    run_recovery_work();
+    assert(mock.commit_count == 1);
+}
+
+static void test_event_during_commit(void)
+{
+    reset_test_state(1);
+    request_recovery();
+    mock.faults.events_during_commit = 1;
+    run_recovery_work();
+
+    assert(mock.nv_device.link_recovery_work.pending);
+    assert(mock.connectors[0].link_recovery_handled_generation == 1);
+    assert(mock.connectors[0].link_recovery_generation.counter == 2);
+
+    run_recovery_work();
+    assert(mock.commit_count == 2);
+    assert(mock.connectors[0].link_recovery_handled_generation == 2);
+}
+
+enum failure_point {
+    ALLOCATE_ATOMIC_STATE,
+    ACQUIRE_CONNECTION_LOCK,
+    ACQUIRE_CRTC_LOCK,
+    GET_CONNECTOR_STATE,
+    GET_CRTC_STATE,
+    COMMIT_BEFORE_STATE_SWAP,
+    COMMIT_AFTER_STATE_SWAP
+};
+
+static void inject_failure(enum failure_point point, int error)
+{
+    switch (point) {
+    case ALLOCATE_ATOMIC_STATE:
+        assert(error == ENOMEM);
+        mock.faults.allocation_failures = 1;
+        break;
+    case ACQUIRE_CONNECTION_LOCK:
+        assert(error == EDEADLK);
+        mock.faults.deadlock_on_lock_call = 1;
+        break;
+    case ACQUIRE_CRTC_LOCK:
+        assert(error == EDEADLK);
+        mock.faults.deadlock_on_lock_call = 2;
+        break;
+    case GET_CONNECTOR_STATE:
+        mock.faults.connector_state_error = error;
+        break;
+    case GET_CRTC_STATE:
+        mock.faults.crtc_state_error = error;
+        break;
+    case COMMIT_BEFORE_STATE_SWAP:
+        mock.faults.commit_error = error;
+        break;
+    case COMMIT_AFTER_STATE_SWAP:
+        mock.faults.post_swap_error = error;
+        break;
     }
-    puts("PASS allocation, state acquisition, pre-swap and post-swap failures");
 }
-static void test_deadlock_backoff(void)
+
+static void test_failed_attempt_is_retried(void)
 {
-    for (unsigned int scenario = 0; scenario < 5; scenario++) {
-        reset(1); request();
-        switch (scenario) {
-        case 0: lock_error_at = 1; break;
-        case 1: lock_error_at = 2; break;
-        case 2: connector_error = EDEADLK; break;
-        case 3: crtc_error = EDEADLK; break;
-        case 4: commit_error = EDEADLK; break;
-        }
-        replace_mode_on_backoff = true;
-        run_work();
-        assert(backoffs == 1 && success_logs == 1 && !error_logs);
-        assert(connectors[0].link_recovery_policy.attempts == 1);
-        assert(committed_mode == 144 && committed_color == 12);
+    static const struct {
+        enum failure_point point;
+        int error;
+    } failures[] = {
+        { ALLOCATE_ATOMIC_STATE, ENOMEM },
+        { GET_CONNECTOR_STATE, ENOMEM },
+        { GET_CRTC_STATE, ENOMEM },
+        { COMMIT_BEFORE_STATE_SWAP, EINVAL },
+        { COMMIT_AFTER_STATE_SWAP, EIO }
+    };
+    unsigned int i;
+
+    for (i = 0; i < sizeof(failures) / sizeof(failures[0]); i++) {
+        reset_test_state(1);
+        request_recovery();
+        inject_failure(failures[i].point, failures[i].error);
+        run_recovery_work();
+
+        assert(mock.connector_states[0].link_status ==
+               DRM_MODE_LINK_STATUS_BAD);
+        assert(mock.error_log_count == 1);
+        assert(mock.hotplug_event_count == 1);
+        assert(mock.success_log_count == 0);
+        assert(mock.nv_device.link_recovery_work.pending);
+
+        mock.faults.post_swap_error = 0;
+        run_recovery_work();
+        assert(mock.connector_states[0].link_status ==
+               DRM_MODE_LINK_STATUS_GOOD);
+        assert(mock.success_log_count == 1);
     }
-    reset(1); request(); crtc_error = EDEADLK; unplug_on_backoff = true; run_work();
-    assert(!commits && !error_logs && !connectors[0].link_recovery_policy.attempts);
-    puts("PASS lock backoff, retry budget refund, concurrent mode change and unplug");
 }
-static void test_storm_and_rearm(void)
+
+static void test_deadlock_backoff_uses_current_configuration(void)
 {
-    reset(1); request(); late_error = EIO;
-    for (unsigned int i = 0; i < 4; i++) { run_work(); now_ms += 100; }
-    assert(commits == 3 && !nv_device.link_recovery_work.pending);
-    assert(conn_states[0].link_status == DRM_MODE_LINK_STATUS_BAD);
-    unsigned int logged = error_logs, notified = hotplugs;
-    for (unsigned int i = 0; i < 100; i++) { request(); run_work(); now_ms += 100; }
-    assert(commits == 3 && error_logs == logged && hotplugs == notified);
-    now_ms += NV_DRM_LINK_RECOVERY_QUIET_MS;
-    late_error = 0; request(); run_work();
-    assert(commits == 4 && success_logs == 1);
-    assert(connectors[0].link_recovery_policy.attempts == 1);
-    puts("PASS bounded retries, continuous event storm and quiet-period rearm");
+    static const enum failure_point failures[] = {
+        ACQUIRE_CONNECTION_LOCK,
+        ACQUIRE_CRTC_LOCK,
+        GET_CONNECTOR_STATE,
+        GET_CRTC_STATE,
+        COMMIT_BEFORE_STATE_SWAP
+    };
+    unsigned int i;
+
+    for (i = 0; i < sizeof(failures) / sizeof(failures[0]); i++) {
+        reset_test_state(1);
+        request_recovery();
+        inject_failure(failures[i], EDEADLK);
+        mock.faults.change_configuration_during_backoff = true;
+        run_recovery_work();
+
+        assert(mock.backoff_count == 1);
+        assert(mock.success_log_count == 1);
+        assert(mock.error_log_count == 0);
+        assert(mock.connectors[0].link_recovery_policy.attempts == 1);
+        assert(mock.committed_mode == 144);
+        assert(mock.committed_color == 12);
+    }
 }
-static void test_multiple_connectors_and_pause(void)
+
+static void test_disconnect_during_backoff(void)
 {
-    reset(4);
-    for (unsigned int i = 0; i < 4; i++) nv_drm_queue_link_recovery(&connectors[i]);
-    crtc_states[1].active = false;
-    connectors[2].base.status = connector_status_disconnected;
-    run_work(); assert(commits == 2);
-    assert(connectors[0].link_recovery_policy.attempts == 1);
-    assert(connectors[3].link_recovery_policy.attempts == 1);
-    reset(1); request(); pause_on_commit = 1; late_error = EIO; run_work();
-    assert(!nv_device.link_recovery_work.pending);
-    reset(1); connectors[0].link_recovery_generation.counter = UINT_MAX;
-    connectors[0].link_recovery_handled_generation = UINT_MAX;
-    request(); run_work(); assert(commits == 1);
-    puts("PASS independent connectors, pause during failure and generation wrap");
+    reset_test_state(1);
+    request_recovery();
+    inject_failure(GET_CRTC_STATE, EDEADLK);
+    mock.faults.disconnect_during_backoff = true;
+    run_recovery_work();
+
+    assert(mock.commit_count == 0);
+    assert(mock.error_log_count == 0);
+    assert(mock.connectors[0].link_recovery_policy.attempts == 0);
 }
+
+static void test_retry_limit_and_quiet_period(void)
+{
+    unsigned int errors_after_limit;
+    unsigned int hotplugs_after_limit;
+    unsigned int i;
+
+    reset_test_state(1);
+    request_recovery();
+    mock.faults.post_swap_error = EIO;
+
+    /* Three failed commits are followed by a pass that exhausts the budget. */
+    for (i = 0; i < 4; i++) {
+        run_recovery_work();
+        mock.time_ms += 100;
+    }
+    assert(mock.commit_count == 3);
+    assert(!mock.nv_device.link_recovery_work.pending);
+    assert(mock.connector_states[0].link_status == DRM_MODE_LINK_STATUS_BAD);
+    errors_after_limit = mock.error_log_count;
+    hotplugs_after_limit = mock.hotplug_event_count;
+
+    /* A continuous event storm must not rearm retries or repeat warnings. */
+    for (i = 0; i < 100; i++) {
+        request_recovery();
+        run_recovery_work();
+        mock.time_ms += 100;
+    }
+    assert(mock.commit_count == 3);
+    assert(mock.error_log_count == errors_after_limit);
+    assert(mock.hotplug_event_count == hotplugs_after_limit);
+
+    mock.time_ms += NV_DRM_LINK_RECOVERY_QUIET_MS;
+    mock.faults.post_swap_error = 0;
+    request_recovery();
+    run_recovery_work();
+    assert(mock.commit_count == 4);
+    assert(mock.success_log_count == 1);
+    assert(mock.connectors[0].link_recovery_policy.attempts == 1);
+}
+
+static void test_connectors_recover_independently(void)
+{
+    unsigned int i;
+
+    reset_test_state(4);
+    for (i = 0; i < mock.connector_count; i++) {
+        nv_drm_queue_link_recovery(&mock.connectors[i]);
+    }
+    mock.crtc_states[1].active = false;
+    mock.connectors[2].base.status = connector_status_disconnected;
+    run_recovery_work();
+
+    assert(mock.commit_count == 2);
+    assert(mock.connectors[0].link_recovery_policy.attempts == 1);
+    assert(mock.connectors[3].link_recovery_policy.attempts == 1);
+}
+
+static void test_pause_during_failed_commit(void)
+{
+    reset_test_state(1);
+    request_recovery();
+    mock.faults.pause_during_commit = true;
+    mock.faults.post_swap_error = EIO;
+    run_recovery_work();
+    assert(!mock.nv_device.link_recovery_work.pending);
+}
+
+static void test_generation_wrap(void)
+{
+    reset_test_state(1);
+    mock.connectors[0].link_recovery_generation.counter = UINT_MAX;
+    mock.connectors[0].link_recovery_handled_generation = UINT_MAX;
+    request_recovery();
+    run_recovery_work();
+    assert(mock.commit_count == 1);
+}
+
 static void test_failed_modeset_routing(void)
 {
-    reset(4);
-    crtc_states[0].mode_changed = true;
-    crtc_states[1].active = false;
-    crtc_states[1].mode_changed = true;
-    conn_states[2].crtc = NULL;
-    nv_drm_atomic_state_base_t state = {};
+    nv_drm_atomic_state_base_t state = {0};
+
+    reset_test_state(4);
+    mock.crtc_states[0].mode_changed = true;
+    mock.crtc_states[1].active = false;
+    mock.crtc_states[1].mode_changed = true;
+    mock.connector_states[2].crtc = NULL;
+
+    /* Only output 0 needs an active modeset; output 3 is an ordinary flip. */
     nv_drm_recover_failed_modeset(&state);
-    assert(connectors[0].link_recovery_generation.counter == 1);
-    assert(connectors[1].link_recovery_generation.counter == 0);
-    assert(connectors[2].link_recovery_generation.counter == 0);
-    assert(connectors[3].link_recovery_generation.counter == 0);
-    crtc_states[0].mode_changed = false;
-    crtc_states[3].connectors_changed = true;
+    assert(mock.connectors[0].link_recovery_generation.counter == 1);
+    assert(mock.connectors[1].link_recovery_generation.counter == 0);
+    assert(mock.connectors[2].link_recovery_generation.counter == 0);
+    assert(mock.connectors[3].link_recovery_generation.counter == 0);
+
+    mock.crtc_states[0].mode_changed = false;
+    mock.crtc_states[3].connectors_changed = true;
     nv_drm_recover_failed_modeset(&state);
-    assert(connectors[3].link_recovery_generation.counter == 1);
-    crtc_states[3].connectors_changed = false;
-    crtc_states[3].active_changed = true;
+    assert(mock.connectors[3].link_recovery_generation.counter == 1);
+
+    mock.crtc_states[3].connectors_changed = false;
+    mock.crtc_states[3].active_changed = true;
     nv_drm_recover_failed_modeset(&state);
-    assert(connectors[3].link_recovery_generation.counter == 2);
-    puts("PASS failed modesets select active outputs; ordinary flips and disable commits do not retry");
+    assert(mock.connectors[3].link_recovery_generation.counter == 2);
 }
-static void test_pending_connection_status(void)
+
+static void test_delayed_detection_with_another_active_output(void)
 {
-    reset(4);
-    /* HDMI recovery completes while DP's cached connection status lags detect. */
-    connectors[1].base.status = connector_status_disconnected;
-    nv_drm_queue_link_recovery(&connectors[0]);
-    nv_drm_queue_link_recovery(&connectors[1]);
-    run_work();
-    assert(commits == 1);
-    assert(connectors[1].link_recovery_handled_generation == 0);
-    assert(nv_device.link_recovery_work.pending);
-    now_ms += 250;
-    connectors[1].base.status = connector_status_connected;
-    crtc_states[1].user_mode = 240;
-    run_work();
-    assert(commits == 2 && committed_mode == 240);
-    assert(connectors[1].link_recovery_handled_generation == 1);
-    assert(connectors[1].link_recovery_policy.attempts == 1);
-    puts("PASS mixed HDMI/DP recovery retains a request across stale disconnected status");
+    reset_test_state(4);
+
+    /* HDMI recovery completes while DP's cached connection status is stale. */
+    mock.connectors[1].base.status = connector_status_disconnected;
+    nv_drm_queue_link_recovery(&mock.connectors[0]);
+    nv_drm_queue_link_recovery(&mock.connectors[1]);
+    run_recovery_work();
+    assert(mock.commit_count == 1);
+    assert(mock.connectors[1].link_recovery_handled_generation == 0);
+    assert(mock.nv_device.link_recovery_work.pending);
+
+    mock.time_ms += 250;
+    mock.connectors[1].base.status = connector_status_connected;
+    mock.crtc_states[1].user_mode = 240;
+    run_recovery_work();
+    assert(mock.commit_count == 2);
+    assert(mock.committed_mode == 240);
+    assert(mock.connectors[1].link_recovery_handled_generation == 1);
+    assert(mock.connectors[1].link_recovery_policy.attempts == 1);
 }
-static void test_detection_wait_boundaries(void)
+
+static void test_detection_wait_stops_when_recovery_is_unwanted(void)
 {
-    for (unsigned int scenario = 0; scenario < 4; scenario++) {
-        reset(1);
-        connectors[0].base.status = connector_status_disconnected;
-        request(); run_work();
-        now_ms += 100;
-        switch (scenario) {
-        case 0: conn_states[0].crtc = NULL; break;
-        case 1: crtc_states[0].active = false; break;
-        case 2: nv_device.link_recovery_paused = true; break;
-        case 3: nv_drm_link_recovery_enabled = false; break;
+    enum stop_reason {
+        CONNECTOR_UNASSIGNED,
+        CRTC_DISABLED,
+        RECOVERY_PAUSED,
+        RECOVERY_DISABLED,
+        STOP_REASON_COUNT
+    } reason;
+
+    for (reason = 0; reason < STOP_REASON_COUNT; reason++) {
+        reset_test_state(1);
+        mock.connectors[0].base.status = connector_status_disconnected;
+        request_recovery();
+        run_recovery_work();
+        mock.time_ms += 100;
+
+        switch (reason) {
+        case CONNECTOR_UNASSIGNED:
+            mock.connector_states[0].crtc = NULL;
+            break;
+        case CRTC_DISABLED:
+            mock.crtc_states[0].active = false;
+            break;
+        case RECOVERY_PAUSED:
+            mock.nv_device.link_recovery_paused = true;
+            break;
+        case RECOVERY_DISABLED:
+            nv_drm_link_recovery_enabled = false;
+            break;
+        default:
+            assert(false);
         }
-        run_work();
-        assert(!commits && !hotplugs && !nv_device.link_recovery_work.pending);
-        assert(!connectors[0].link_recovery_policy.attempts);
-        if (scenario < 2) {
-            assert(connectors[0].link_recovery_handled_generation == 1);
-            assert(!connectors[0].link_recovery_policy.detection_deadline_ms);
+
+        run_recovery_work();
+        assert(mock.commit_count == 0);
+        assert(mock.hotplug_event_count == 0);
+        assert(!mock.nv_device.link_recovery_work.pending);
+        assert(mock.connectors[0].link_recovery_policy.attempts == 0);
+        if (reason == CONNECTOR_UNASSIGNED || reason == CRTC_DISABLED) {
+            assert(mock.connectors[0].link_recovery_handled_generation == 1);
+            assert(mock.connectors[0].link_recovery_policy.detection_deadline_ms
+                   == 0);
         }
     }
-    reset(1);
-    connectors[0].base.status = connector_status_disconnected;
-    request(); run_work();
-    NvU64 deadline = connectors[0].link_recovery_policy.detection_deadline_ms;
-    for (unsigned int i = 0; i < 19; i++) {
-        now_ms += 100;
-        request(); run_work();
-        assert(connectors[0].link_recovery_policy.detection_deadline_ms == deadline);
-        assert(!connectors[0].link_recovery_handled_generation);
-    }
-    now_ms = deadline;
-    run_work();
-    assert(!commits && !hotplugs && !nv_device.link_recovery_work.pending);
-    assert(connectors[0].link_recovery_handled_generation == 20);
-    assert(!connectors[0].link_recovery_policy.attempts);
-    connectors[0].base.status = connector_status_connected;
-    run_work(); assert(!commits);
-    request(); run_work(); assert(commits == 1);
-    puts("PASS detection wait ends on disable/pause/unassign and cannot be extended by event storms");
 }
+
+static void test_detection_deadline_survives_event_storm(void)
+{
+    NvU64 detection_deadline;
+    unsigned int i;
+
+    reset_test_state(1);
+    mock.connectors[0].base.status = connector_status_disconnected;
+    request_recovery();
+    run_recovery_work();
+    detection_deadline =
+        mock.connectors[0].link_recovery_policy.detection_deadline_ms;
+
+    /* Keep adding requests until just before the original two-second limit. */
+    for (i = 0; i < 19; i++) {
+        mock.time_ms += 100;
+        request_recovery();
+        run_recovery_work();
+        assert(mock.connectors[0].link_recovery_policy.detection_deadline_ms
+               == detection_deadline);
+        assert(mock.connectors[0].link_recovery_handled_generation == 0);
+    }
+
+    mock.time_ms = detection_deadline;
+    run_recovery_work();
+    assert(mock.commit_count == 0);
+    assert(mock.hotplug_event_count == 0);
+    assert(!mock.nv_device.link_recovery_work.pending);
+    assert(mock.connectors[0].link_recovery_handled_generation == 20);
+    assert(mock.connectors[0].link_recovery_policy.attempts == 0);
+
+    /* Detection alone must not revive an expired request. */
+    mock.connectors[0].base.status = connector_status_connected;
+    run_recovery_work();
+    assert(mock.commit_count == 0);
+    request_recovery();
+    run_recovery_work();
+    assert(mock.commit_count == 1);
+}
+
+static void run_test(const char *name, void (*test)(void))
+{
+    printf("RUN  %s\n", name);
+    fflush(stdout);
+    test();
+    printf("PASS %s\n", name);
+}
+
 int main(void)
 {
-    test_pending_connection_status();
-    test_detection_wait_boundaries();
-    test_disabled_and_idle();
-    test_inactive_and_unplugged();
-    test_coalesce_and_new_events();
-    test_error_paths();
-    test_deadlock_backoff();
-    test_storm_and_rearm();
-    test_multiple_connectors_and_pause();
-    test_failed_modeset_routing();
-    puts("All production-worker control-flow tests passed under ASan/UBSan.");
+    run_test("idle worker", test_idle_worker);
+    run_test("disabled recovery", test_recovery_disabled);
+    run_test("inactive outputs", test_inactive_outputs);
+    run_test("disconnected output expiry", test_disconnected_output_expires);
+    run_test("event coalescing", test_event_coalescing);
+    run_test("event during commit", test_event_during_commit);
+    run_test("failed attempt retry", test_failed_attempt_is_retried);
+    run_test("current configuration after deadlock backoff",
+             test_deadlock_backoff_uses_current_configuration);
+    run_test("disconnect during backoff", test_disconnect_during_backoff);
+    run_test("retry limit and quiet period", test_retry_limit_and_quiet_period);
+    run_test("independent connectors", test_connectors_recover_independently);
+    run_test("pause during failed commit", test_pause_during_failed_commit);
+    run_test("generation wrap", test_generation_wrap);
+    run_test("failed modeset routing", test_failed_modeset_routing);
+    run_test("delayed detection with another active output",
+             test_delayed_detection_with_another_active_output);
+    run_test("stop waiting when recovery is unwanted",
+             test_detection_wait_stops_when_recovery_is_unwanted);
+    run_test("detection deadline during an event storm",
+             test_detection_deadline_survives_event_storm);
     return 0;
 }

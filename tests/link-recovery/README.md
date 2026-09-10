@@ -15,3 +15,12 @@ The mixed-display regression completes one connector's recovery while another co
 In a tracing sandbox where LeakSanitizer cannot inspect the process, use `ASAN_OPTIONS=detect_leaks=0 python3 tests/link-recovery/run.py`. Address and undefined-behavior checks remain enabled; the mock allocation/release assertions remain active.
 
 These are control-flow tests. They do not execute real kernel locking, hardware, MST payload allocation, DSC, HDMI FRL training, or HDR/LUT programming. The full kernel build checks API integration. Hardware and kernel lockdep validation remain necessary before treating the change as production validated.
+
+## Test organization
+
+- `test-worker.c` contains named recovery scenarios with separate setup, actions, and assertions. Failure locations use an enum rather than numbered cases.
+- `mock-drm.h` provides the kernel types needed by the worker. `mock-drm.c` keeps device state, injected failures, and observed calls in one fixture. One-shot errors and persistent post-swap failures are distinguished explicitly.
+- `test-dp.cpp` checks every selected/attaching/failed head combination and verifies that transient head assignments preserve recovery events. Its layout follows the surrounding DisplayPort C++ code.
+- `run.py` assembles and compiles the production fragments. Compiler and assertion diagnostics point back to the original source files and lines. Function extraction requires one matching signature and uses a brace scanner, so it is not a general C/C++ parser.
+
+The C tests follow the nearby nvidia-drm style: four-space indentation, function braces on their own lines, and one statement per line. Each worker scenario prints its name before running, so an assertion failure identifies the scenario as well as the source location.
