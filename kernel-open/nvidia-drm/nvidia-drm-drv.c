@@ -27,6 +27,7 @@
 #include "nvidia-drm-fb.h"
 #include "nvidia-drm-modeset.h"
 #include "nvidia-drm-encoder.h"
+#include "nvidia-drm-link-recovery.h"
 #include "nvidia-drm-connector.h"
 #include "nvidia-drm-gem.h"
 #include "nvidia-drm-crtc.h"
@@ -226,6 +227,10 @@ static void nv_drm_event_callback(const struct NvKmsKapiEvent *event)
     }
 
     switch (event->type) {
+        case NVKMS_EVENT_TYPE_DPY_LINK_RECOVERY:
+            nv_drm_handle_display_link_recovery(
+                nv_dev, event->u.displayChanged.display);
+            break;
         case NVKMS_EVENT_TYPE_DPY_CHANGED:
             nv_drm_handle_display_change(
                 nv_dev,
@@ -849,6 +854,7 @@ static int nv_drm_dev_load(struct drm_device *dev)
     if (!nvKms->declareEventInterest(
             nv_dev->pDevice,
             ((1 << NVKMS_EVENT_TYPE_DPY_CHANGED) |
+             (1 << NVKMS_EVENT_TYPE_DPY_LINK_RECOVERY) |
              (1 << NVKMS_EVENT_TYPE_DYNAMIC_DPY_CONNECTED) |
              (1 << NVKMS_EVENT_TYPE_FLIP_OCCURRED)))) {
         NV_DRM_DEV_LOG_ERR(nv_dev, "Failed to register event mask");
@@ -886,6 +892,7 @@ static int nv_drm_dev_load(struct drm_device *dev)
     /* Enable event handling */
 
     INIT_DELAYED_WORK(&nv_dev->hotplug_event_work, nv_drm_handle_hotplug_event);
+    INIT_DELAYED_WORK(&nv_dev->link_recovery_work, nv_drm_handle_link_recovery_work);
     atomic_set(&nv_dev->enable_event_handling, true);
 
     init_waitqueue_head(&nv_dev->flip_event_wq);
@@ -907,6 +914,12 @@ static void nv_drm_dev_unload(struct drm_device *dev)
         return;
     }
 
+    /* Drain recovery while flip callbacks can still complete its commit. */
+    mutex_lock(&nv_dev->lock);
+    WRITE_ONCE(nv_dev->link_recovery_paused, true);
+    mutex_unlock(&nv_dev->lock);
+    cancel_delayed_work_sync(&nv_dev->link_recovery_work);
+
     /* Release modeset ownership if fbdev is enabled */
 
 #if defined(NV_DRM_FBDEV_AVAILABLE)
@@ -916,14 +929,14 @@ static void nv_drm_dev_unload(struct drm_device *dev)
     }
 #endif
 
+    /* Stop event callbacks from requeueing work before draining it. */
+    mutex_lock(&nv_dev->lock);
+    atomic_set(&nv_dev->enable_event_handling, false);
+    mutex_unlock(&nv_dev->lock);
     cancel_delayed_work_sync(&nv_dev->hotplug_event_work);
     mutex_lock(&nv_dev->lock);
 
     WARN_ON(nv_dev->subOwnershipGranted);
-
-    /* Disable event handling */
-
-    atomic_set(&nv_dev->enable_event_handling, false);
 
     /* Clean up output polling */
 
@@ -2316,12 +2329,17 @@ void nv_drm_suspend_resume(NvBool suspend)
         }
 
         if (suspend) {
+            mutex_lock(&nv_dev->lock);
+            WRITE_ONCE(nv_dev->link_recovery_paused, true);
+            mutex_unlock(&nv_dev->lock);
+            cancel_delayed_work_sync(&nv_dev->link_recovery_work);
             drm_kms_helper_poll_disable(dev);
 #if defined(NV_DRM_FBDEV_AVAILABLE)
             drm_fb_helper_set_suspend_unlocked(dev->fb_helper, 1);
 #endif
             drm_mode_config_reset(dev);
         } else {
+            WRITE_ONCE(nv_dev->link_recovery_paused, false);
 #if defined(NV_DRM_FBDEV_AVAILABLE)
             drm_fb_helper_set_suspend_unlocked(dev->fb_helper, 0);
 #endif

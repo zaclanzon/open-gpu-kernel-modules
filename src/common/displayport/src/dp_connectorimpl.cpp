@@ -3604,8 +3604,9 @@ bool ConnectorImpl::needToEnableFEC(const DpPreModesetParams &params)
     return false;
 }
 
-void ConnectorImpl::dpPreModeset(const DpPreModesetParams &params)
+NvU32 ConnectorImpl::dpPreModeset(const DpPreModesetParams &params)
 {
+    NvU32 failedHeadMask = 0;
     this->bFECEnable |= this->needToEnableFEC(params);
 
     DP_ASSERT(this->inTransitionHeadMask == 0x0);
@@ -3621,8 +3622,11 @@ void ConnectorImpl::dpPreModeset(const DpPreModesetParams &params)
         if (params.head[i].pTarget != NULL)
         {
             DP_ASSERT(params.head[i].pModesetParams->headIndex == i);
-            this->notifyAttachBegin(params.head[i].pTarget,
-                                    *params.head[i].pModesetParams);
+            if (!this->notifyAttachBegin(params.head[i].pTarget,
+                                         *params.head[i].pModesetParams))
+            {
+                failedHeadMask |= NVBIT(i);
+            }
         }
         else
         {
@@ -3630,6 +3634,7 @@ void ConnectorImpl::dpPreModeset(const DpPreModesetParams &params)
         }
         this->perHeadAttachedGroup[i] = params.head[i].pTarget;
     }
+    return failedHeadMask;
 }
 
 void ConnectorImpl::dpPostModeset(void)

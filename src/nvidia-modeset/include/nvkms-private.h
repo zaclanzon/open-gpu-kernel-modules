@@ -39,6 +39,7 @@ void nvFreePerOpenDev(struct NvKmsPerOpen *pOpen,
                       struct NvKmsPerOpenDev *pOpenDev);
 
 void nvSendDpyEventEvo(const NVDpyEvoRec *pDpyEvo, const NvU32 eventType);
+void nvSendDpyLinkRecoveryEventEvo(const NVDpyEvoRec *pDpyEvo);
 
 void nvSendDpyAttributeChangedEventEvo(const NVDpyEvoRec *pDpyEvo,
                                        const enum NvKmsDpyAttribute attribute,

@@ -213,6 +213,7 @@ nvHandleHotplugEventDeferredWork(void *dataPtr, NvU32 dataU32)
             nvDPNotifyLongPulse(pConnectorEvo, TRUE);
         } else {
             nvSendDpyEventEvo(pDpyEvo, NVKMS_EVENT_TYPE_DPY_CHANGED);
+            nvSendDpyLinkRecoveryEventEvo(pDpyEvo);
         }
         
         pDpyEvo->hotplugged = TRUE;
@@ -244,4 +245,5 @@ nvHandleHDMIFRLRetrainEventDeferredWork(void *dataPtr, NvU32 dataU32)
 
     nvSendDpyEventEvo(pDpyEvo, NVKMS_EVENT_TYPE_DPY_CHANGED);
     pDpyEvo->hdmi.reassessFrlLinkCaps = TRUE;
+    nvSendDpyLinkRecoveryEventEvo(pDpyEvo);
 }

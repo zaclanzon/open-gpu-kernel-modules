@@ -605,7 +605,8 @@ namespace DisplayPort
         // Group of panels we're attaching to this head
         virtual bool notifyAttachBegin(Group * target, const DpModesetParams &modesetParams) = 0;
 
-        virtual void dpPreModeset(const DpPreModesetParams &modesetParams) = 0;
+        // Return the mask of heads whose attach preparation failed.
+        virtual NvU32 dpPreModeset(const DpPreModesetParams &modesetParams) = 0;
         virtual void dpPostModeset(void) = 0;
 
         virtual void readRemoteHdcpCaps() = 0;

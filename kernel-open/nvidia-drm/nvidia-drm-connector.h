@@ -23,6 +23,8 @@
 #ifndef __NVIDIA_DRM_CONNECTOR_H__
 #define __NVIDIA_DRM_CONNECTOR_H__
 
+#include "nvidia-drm-link-recovery-policy.h"
+
 #include "nvidia-drm-conftest.h"
 
 #if defined(NV_DRM_AVAILABLE)
@@ -48,6 +50,9 @@ struct nv_drm_connector {
     struct edid *edid;
 
     atomic_t connection_status_dirty;
+    atomic_t link_recovery_generation;
+    unsigned int link_recovery_handled_generation;
+    struct nv_drm_link_recovery_policy link_recovery_policy;
 
     /**
      * @modeset_permission_filep:

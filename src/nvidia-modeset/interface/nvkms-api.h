@@ -3102,6 +3102,17 @@ struct NvKmsEventDpyChanged {
     NVDpyId dpyId;
 };
 
+/*!
+ * NVKMS_EVENT_TYPE_DPY_LINK_RECOVERY
+ *
+ * A display's stream configuration may need to be re-applied after an attach
+ * failure or sink reset. A successful link train does not imply that the
+ * sink retained its stream configuration. Consumers should schedule recovery
+ * outside the event-dispatch context, and use their current atomic state.
+ * Inactive/disconnected displays must not be enabled in response to this event.
+ * This event uses u.dpyChanged to identify the display, preserving event ABI.
+ */
+
 
 /*!
  * NVKMS_EVENT_TYPE_DYNAMIC_DPY_CONNECTED

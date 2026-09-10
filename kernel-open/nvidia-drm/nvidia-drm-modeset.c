@@ -27,6 +27,8 @@
 #include "nvidia-drm-priv.h"
 #include "nvidia-drm-modeset.h"
 #include "nvidia-drm-crtc.h"
+#include "nvidia-drm-connector.h"
+#include "nvidia-drm-link-recovery.h"
 #include "nvidia-drm-os-interface.h"
 #include "nvidia-drm-helper.h"
 
@@ -50,6 +52,7 @@
 
 struct nv_drm_atomic_state {
     struct NvKmsKapiRequestedModeSetConfig config;
+    int commit_result;
     nv_drm_atomic_state_base_t base;
 };
 
@@ -57,6 +60,11 @@ static inline struct nv_drm_atomic_state *to_nv_atomic_state(
     nv_drm_atomic_state_base_t *state)
 {
     return container_of(state, struct nv_drm_atomic_state, base);
+}
+
+int nv_drm_atomic_commit_result(nv_drm_atomic_state_base_t *state)
+{
+    return to_nv_atomic_state(state)->commit_result;
 }
 
 nv_drm_atomic_state_base_t *
@@ -76,6 +84,7 @@ nv_drm_atomic_state_alloc(struct drm_device *dev)
 
 void nv_drm_atomic_state_clear(nv_drm_atomic_state_base_t *state)
 {
+    to_nv_atomic_state(state)->commit_result = 0;
     nv_drm_atomic_state_base_default_clear(state);
 }
 
@@ -689,6 +698,27 @@ static void __nv_drm_handle_flip_event(struct nv_drm_crtc *nv_crtc)
     nv_drm_free(nv_flip);
 }
 
+/* Called after swap_state, with the commit's DRM modeset locks still held. */
+static void nv_drm_recover_failed_modeset(nv_drm_atomic_state_base_t *state)
+{
+    struct drm_connector *connector;
+    struct drm_connector_state *connector_state;
+    int i;
+
+    for_each_new_connector_in_state(state, connector, connector_state, i) {
+        struct drm_crtc_state *crtc_state;
+
+        if (connector_state->crtc == NULL) {
+            continue;
+        }
+        crtc_state = drm_atomic_get_new_crtc_state(state, connector_state->crtc);
+        if (crtc_state != NULL && crtc_state->active &&
+            drm_atomic_crtc_needs_modeset(crtc_state)) {
+            nv_drm_queue_link_recovery(to_nv_connector(connector));
+        }
+    }
+}
+
 int nv_drm_atomic_commit(struct drm_device *dev,
                          nv_drm_atomic_state_base_t *state,
                          bool nonblock)
@@ -699,6 +729,8 @@ int nv_drm_atomic_commit(struct drm_device *dev,
     struct drm_crtc *crtc = NULL;
     struct drm_crtc_state *crtc_state = NULL;
     struct nv_drm_device *nv_dev = to_nv_device(dev);
+
+    to_nv_atomic_state(state)->commit_result = 0;
 
     /*
      * XXX: drm_mode_config_funcs::atomic_commit() mandates to return -EBUSY
@@ -747,6 +779,7 @@ int nv_drm_atomic_commit(struct drm_device *dev,
                     nv_dev->flip_event_wq,
                     list_empty(&nv_crtc->flip_list),
                     3 * HZ /* 3 second */) == 0) {
+                to_nv_atomic_state(state)->commit_result = -ETIMEDOUT;
                 NV_DRM_DEV_LOG_ERR(
                     nv_dev,
                     "Flip event timeout on head %u", nv_crtc->head);
@@ -810,6 +843,7 @@ int nv_drm_atomic_commit(struct drm_device *dev,
     if ((ret = nv_drm_atomic_apply_modeset_config(
                     dev,
                     state, true /* commit */)) != 0) {
+        to_nv_atomic_state(state)->commit_result = ret;
         NV_DRM_DEV_LOG_ERR(
             nv_dev,
             "Failed to apply atomic modeset.  Error code: %d",
@@ -911,6 +945,7 @@ int nv_drm_atomic_commit(struct drm_device *dev,
                                                           nv_crtc->head,
                                                           true /* waitForCompletion */);
                 if (!complete) {
+                    to_nv_atomic_state(state)->commit_result = -ETIMEDOUT;
                     NV_DRM_DEV_LOG_ERR(
                         nv_dev,
                         "LUT notifier timeout on head %u", nv_crtc->head);
@@ -920,6 +955,10 @@ int nv_drm_atomic_commit(struct drm_device *dev,
     }
 
 done:
+
+    if (to_nv_atomic_state(state)->commit_result != 0) {
+        nv_drm_recover_failed_modeset(state);
+    }
 
     /*
      * State will be freed when the caller drops its reference after we return.

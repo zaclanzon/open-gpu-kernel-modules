@@ -56,6 +56,9 @@ nv_drm_add_encoder(struct drm_device *dev, NvKmsKapiDisplay hDisplay);
 void nv_drm_handle_display_change(struct nv_drm_device *nv_dev,
                                   NvKmsKapiDisplay hDisplay);
 
+void nv_drm_handle_display_link_recovery(struct nv_drm_device *nv_dev,
+                                         NvKmsKapiDisplay hDisplay);
+
 void nv_drm_handle_dynamic_display_connected(struct nv_drm_device *nv_dev,
                                              NvKmsKapiDisplay hDisplay);
 

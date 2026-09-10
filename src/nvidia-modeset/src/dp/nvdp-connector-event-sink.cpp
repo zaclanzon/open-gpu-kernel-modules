@@ -384,6 +384,9 @@ void ConnectorEventSink::newDevice(DisplayPort::Device *device)
 
     nvSendDpyEventEvo(pDpyEvo, NVKMS_EVENT_TYPE_DPY_CHANGED);
 
+    // DRM checks the current desired state after sink re-detection.
+    nvSendDpyLinkRecoveryEventEvo(pDpyEvo);
+
     return;
 
  fail:
@@ -489,6 +492,7 @@ void ConnectorEventSink::notifyZombieStateChange(DisplayPort::Device *dev,
         EnableVRR(pDpyEvo);
 
         nvDPAddDeviceToActiveGroup(pDpyEvo);
+        nvSendDpyLinkRecoveryEventEvo(pDpyEvo);
     }
 
     if (sendEvent) {

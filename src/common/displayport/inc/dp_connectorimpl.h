@@ -632,7 +632,7 @@ namespace DisplayPort
 
         bool needToEnableFEC(const DpPreModesetParams &params);
 
-        virtual void dpPreModeset(const DpPreModesetParams &modesetParams);
+        virtual NvU32 dpPreModeset(const DpPreModesetParams &modesetParams);
         virtual void dpPostModeset(void);
 
         virtual bool isHeadShutDownNeeded(Group * target,   // Group of panels we're attaching to this head

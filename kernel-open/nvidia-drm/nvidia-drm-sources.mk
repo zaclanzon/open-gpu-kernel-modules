@@ -16,6 +16,7 @@ NVIDIA_DRM_SOURCES += nvidia-drm/nvidia-drm-connector.c
 NVIDIA_DRM_SOURCES += nvidia-drm/nvidia-drm-gem.c
 NVIDIA_DRM_SOURCES += nvidia-drm/nvidia-drm-fb.c
 NVIDIA_DRM_SOURCES += nvidia-drm/nvidia-drm-modeset.c
+NVIDIA_DRM_SOURCES += nvidia-drm/nvidia-drm-link-recovery.c
 NVIDIA_DRM_SOURCES += nvidia-drm/nvidia-drm-fence.c
 NVIDIA_DRM_SOURCES += nvidia-drm/nvidia-drm-helper.c
 NVIDIA_DRM_SOURCES += nvidia-drm/nv-kthread-q.c

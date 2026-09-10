@@ -662,6 +662,7 @@ nv_drm_connector_new(struct drm_device *dev,
 
     nv_connector->base.state = &nv_connector_state->base;
     nv_connector->base.state->connector = &nv_connector->base;
+    atomic_set(&nv_connector->link_recovery_generation, 0);
 
     nv_connector->physicalIndex = physicalIndex;
     nv_connector->type     = type;

@@ -30,6 +30,7 @@
 #include "nvidia-drm-connector.h"
 #include "nvidia-drm-crtc.h"
 #include "nvidia-drm-helper.h"
+#include "nvidia-drm-link-recovery.h"
 
 #include "nvmisc.h"
 
@@ -297,6 +298,23 @@ void nv_drm_handle_display_change(struct nv_drm_device *nv_dev,
     nv_drm_connector_mark_connection_status_dirty(nv_encoder->nv_connector);
 
     schedule_delayed_work(&nv_dev->hotplug_event_work, 0);
+}
+
+void nv_drm_handle_display_link_recovery(struct nv_drm_device *nv_dev,
+                                         NvKmsKapiDisplay hDisplay)
+{
+    struct drm_device *dev = nv_dev->dev;
+    struct nv_drm_encoder *encoder;
+
+    mutex_lock(&dev->mode_config.mutex);
+    encoder = get_nv_encoder_from_nvkms_display(dev, hDisplay);
+    if (encoder != NULL) {
+        /* A recovery event may arrive without a separate plug-status change. */
+        nv_drm_connector_mark_connection_status_dirty(encoder->nv_connector);
+        schedule_delayed_work(&nv_dev->hotplug_event_work, 0);
+        nv_drm_queue_link_recovery(encoder->nv_connector);
+    }
+    mutex_unlock(&dev->mode_config.mutex);
 }
 
 void nv_drm_handle_dynamic_display_connected(struct nv_drm_device *nv_dev,

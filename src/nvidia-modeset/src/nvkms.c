@@ -6484,6 +6484,7 @@ static void SendDpyEventEvo(const NVDpyEvoRec *pDpyEvo,
         switch (eventType) {
 
         case NVKMS_EVENT_TYPE_DPY_CHANGED:
+        case NVKMS_EVENT_TYPE_DPY_LINK_RECOVERY:
             event.u.dpyChanged.deviceHandle = deviceHandle;
             event.u.dpyChanged.dispHandle = dispHandle;
             event.u.dpyChanged.dpyId = pDpyEvo->id;
@@ -6534,6 +6535,17 @@ void nvSendDpyEventEvo(const NVDpyEvoRec *pDpyEvo, const NvU32 eventType)
     SendDpyEventEvo(pDpyEvo, eventType,
                     0 /* attribute (unused) */,
                     0 /* value (unused) */ );
+}
+
+void nvSendDpyLinkRecoveryEventEvo(const NVDpyEvoRec *pDpyEvo)
+{
+    /*
+     * Head assignment is transient during modesets and sink re-detection.
+     * Preserve the event; the consumer checks its current desired state.
+     */
+    if (pDpyEvo != NULL) {
+        nvSendDpyEventEvo(pDpyEvo, NVKMS_EVENT_TYPE_DPY_LINK_RECOVERY);
+    }
 }
 
 void nvSendDpyAttributeChangedEventEvo(const NVDpyEvoRec *pDpyEvo,

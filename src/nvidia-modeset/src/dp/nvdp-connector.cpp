@@ -33,6 +33,7 @@
 #include "nvkms-utils.h"
 #include "nvkms-rmapi.h"
 #include "nvkms-prealloc.h"
+#include "nvkms-private.h"
 
 #include <dp_connector.h>
 
@@ -860,7 +861,17 @@ void nvDPPreSetMode(NVDPLibConnectorPtr pDpLibConnector,
         }
     }
 
-    connector->dpPreModeset(preModesetParams);
+    const NvU32 failedHeadMask = connector->dpPreModeset(preModesetParams);
+    for (NvU32 head = 0; head < pDispEvo->pDevEvo->numHeads; head++) {
+        if ((failedHeadMask & NVBIT(head)) != 0) {
+            const NVDpyEvoRec *pDpyEvo;
+
+            FOR_ALL_EVO_DPYS(pDpyEvo, pDpLibConnector->dpyIdList[head], pDispEvo) {
+                // The first attach may not have committed active-head state yet.
+                nvSendDpyLinkRecoveryEventEvo(pDpyEvo);
+            }
+        }
+    }
 }
 
 /*
