@@ -4,7 +4,7 @@ Run the suite from a checkout with Git, Bash, Python 3, and `cc` supporting
 AddressSanitizer and UndefinedBehaviorSanitizer (for example, GCC on Ubuntu):
 
 ```sh
-git fetch --no-tags --depth=1 origin e4a5faa2567f28c8eabe0ebb6422b6d0abcf37eb
+git fetch --no-tags --depth=1 origin 61dcc93722ecb418bb5f2e00923f05b4b8051dd1
 bash tests/run.sh
 ```
 
@@ -23,7 +23,7 @@ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 python3 tests/phywin-s
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 python3 tests/ordinary-configurations.py
 ```
 
-The comparison requires base commit `e4a5faa2567f28c8eabe0ebb6422b6d0abcf37eb` in the local Git object database.
+The comparison requires base commit `61dcc93722ecb418bb5f2e00923f05b4b8051dd1` in the local Git object database.
 
 The `Modeset regressions` GitHub Actions workflow runs all five suites on PRs,
 pushes to `main`, and manual dispatch. It fetches only the pinned comparison

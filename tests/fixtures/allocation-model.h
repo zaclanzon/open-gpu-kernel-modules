@@ -49,9 +49,7 @@ typedef struct {
     struct {
         NvU32 numLayers;
     } head[4];
-    struct {
-        NVEvoCapabilities capabilities;
-    } gpus[1];
+    NVEvoCapabilities capabilities;
 } NVDevEvoRec;
 typedef struct {
     NvU32 hwHeadsMask;

@@ -13,7 +13,7 @@ import tempfile
 
 root = Path(__file__).resolve().parents[1]
 source_path = 'src/nvidia-modeset/src/nvkms-evo4.c'
-reference_revision = 'e4a5faa2567f28c8eabe0ebb6422b6d0abcf37eb'
+reference_revision = '61dcc93722ecb418bb5f2e00923f05b4b8051dd1'  # NVIDIA 615.71.09
 preamble = (Path(__file__).with_name('fixtures') / 'allocation-model.h').read_text()
 
 

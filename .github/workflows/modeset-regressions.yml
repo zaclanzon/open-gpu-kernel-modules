@@ -27,6 +27,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Fetch pinned upstream comparison
-        run: git fetch --no-tags --depth=1 origin e4a5faa2567f28c8eabe0ebb6422b6d0abcf37eb
+        run: git fetch --no-tags --depth=1 origin 61dcc93722ecb418bb5f2e00923f05b4b8051dd1
       - name: Run all five suites with ASan and UBSan
         run: bash tests/run.sh

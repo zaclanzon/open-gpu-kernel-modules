@@ -55,7 +55,7 @@ static void TestConfiguration(NvU32 heads, NvU32 layers, NvU32 scalerTiles, NvU3
     NvU32 requiredScalerTiles = 0;
 
     for (NvU32 tile = 0; tile < 8; tile++) {
-        dev.gpus[0].capabilities.hwTile[tile].type =
+        dev.capabilities.hwTile[tile].type =
             tile < scalerTiles ? NV_EVO_HW_TILE_TYPE_0 : NV_EVO_HW_TILE_TYPE_1;
     }
     for (NvU32 head = 0; head < heads; head++) {

@@ -18,7 +18,7 @@ static NvBool TestAllocation(NvU32 windowCount, NvBool reuse, NvU32 scalerTiles,
     dev.numHwTiles = 8;
     dev.numHwPhywins = windowCount;
     for (NvU32 tile = 0; tile < 8; tile++) {
-        dev.gpus[0].capabilities.hwTile[tile].type =
+        dev.capabilities.hwTile[tile].type =
             tile < scalerTiles ? NV_EVO_HW_TILE_TYPE_0 : NV_EVO_HW_TILE_TYPE_1;
     }
     for (NvU32 head = 0; head < 4; head++) {
