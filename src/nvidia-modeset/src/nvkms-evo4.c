@@ -1440,6 +1440,13 @@ static void EvoSetDpDscParamsC9(const NVDispEvoRec *pDispEvo,
     nvAssert((pDscInfo->dp.dscMode == NV_DSC_EVO_MODE_DUAL) ||
                 (pDscInfo->dp.dscMode == NV_DSC_EVO_MODE_SINGLE));
 
+    nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                 "z-trace: head %u DP DSC mode %u bppX16 %u slices %u pps %08x %08x %08x %08x %08x",
+                 head, (NvU32)pDscInfo->dp.dscMode,
+                 pDscInfo->dp.bitsPerPixelX16, pDscInfo->sliceCount,
+                 pDscInfo->dp.pps[0], pDscInfo->dp.pps[1], pDscInfo->dp.pps[2],
+                 pDscInfo->dp.pps[3], pDscInfo->dp.pps[4]);
+
     nvDmaSetStartEvoMethod(pChannel, NVC97D_HEAD_SET_DSC_CONTROL(head), 1);
     nvDmaSetEvoMethodData(pChannel,
         DRF_DEF(C97D, _HEAD_SET_DSC_CONTROL, _ENABLE, _TRUE) |
@@ -2033,6 +2040,45 @@ EvoSetCtrlIsModePossibleParamsCA(
     return TRUE;
 }
 
+/* z-trace: IMP's required tiling and the allocator's result for a modeset. */
+static void ZTraceImpCA(const NVDispEvoRec *pDispEvo,
+                        const NVEvoIsModePossibleDispInput *pInput,
+                        const NVC372_CTRL_IS_MODE_POSSIBLE_PARAMS *pImp,
+                        const NvU32 numRequiredTiles[NVKMS_MAX_HEADS_PER_DISP],
+                        const NVEvoIsModePossibleDispOutput *pOutput,
+                        const NvBool assigned)
+{
+    const NVDevEvoRec *pDevEvo = pDispEvo->pDevEvo;
+    NvBool modeset = FALSE;
+
+    for (NvU32 head = 0; head < pDevEvo->numHeads; head++) {
+        modeset = modeset || ((pInput->head[head].pTimings != NULL) &&
+                              pInput->head[head].modesetRequested);
+    }
+    if (!modeset) {
+        return;
+    }
+
+    nvEvoLogDisp(pDispEvo, assigned ? EVO_LOG_INFO : EVO_LOG_WARN,
+                 "z-trace: IMP heads %u assignments %u required tiles %u allocation %s",
+                 (NvU32)pImp->numHeads, (NvU32)pImp->numTilingAssignments,
+                 (NvU32)pImp->tilingAssignments[0].numTiles,
+                 assigned ? "ok" : "FAILED");
+
+    for (NvU32 i = 0; i < pImp->numHeads; i++) {
+        const NvU32 head = pImp->head[i].headIndex;
+
+        nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                     "z-trace: IMP head %u modeset %u required %u dsc %u sliceMask 0x%x maxSliceWidth %u -> slices %u tiles 0x%x",
+                     head, (NvU32)pInput->head[head].modesetRequested,
+                     numRequiredTiles[head], (NvU32)pImp->head[i].bEnableDsc,
+                     pImp->head[i].possibleDscSliceCountMask,
+                     pImp->head[i].maxDscSliceWidth,
+                     pOutput->head[head].dscSliceCount,
+                     pOutput->head[head].multiTileConfig.tilesMask);
+    }
+}
+
 static NvBool RequiredScalerTiles(const NVHwModeTimingsEvo *pTimings)
 {
     return (pTimings->viewPort.out.width != pTimings->viewPort.in.width) ||
@@ -2521,10 +2567,12 @@ EvoIsModePossibleCA(NVDispEvoPtr pDispEvo,
                                                     pInput,
                                                     numRequiredTiles,
                                                     pOutput)) {
+        ZTraceImpCA(pDispEvo, pInput, pImp, numRequiredTiles, pOutput, FALSE);
         pImp->bIsPossible = FALSE;
         goto done;
     }
 
+    ZTraceImpCA(pDispEvo, pInput, pImp, numRequiredTiles, pOutput, TRUE);
     result = TRUE;
 
 done:
@@ -2825,6 +2873,84 @@ static void SetTileSize(NVEvoChannel *pCoreChannel,
 }
 
 /*
+ * z-trace: log each head's tile, physical-window and DSC slice programming,
+ * and warn when the per-tile DSC constraints above GetTileWidth() fail.
+ * Release builds compile nvAssert() out, so those failures are otherwise silent.
+ */
+static void ZTraceMultiTileConfigCA(const NVDispEvoRec *pDispEvo,
+                                    const NvU32 head,
+                                    const NVHwModeTimingsEvo *pTimings,
+                                    const NVDscInfoEvoRec *pDscInfo,
+                                    const NVHwHeadMultiTileConfigRec *pConfig)
+{
+    const NVDevEvoRec *pDevEvo = pDispEvo->pDevEvo;
+    const NvU32 numTiles = nvPopCount32(pConfig->tilesMask);
+    const NvBool dsc = (pTimings != NULL) &&
+        (pDscInfo->type != NV_DSC_INFO_EVO_TYPE_DISABLED);
+    const NvU32 hActive = (pTimings != NULL) ? nvEvoVisibleWidth(pTimings) : 0;
+    const NvU32 sliceCount = dsc ? pDscInfo->sliceCount : 0;
+    const NvU32 sliceWidth = (sliceCount != 0) ?
+        NV_UNSIGNED_DIV_CEIL(hActive, sliceCount) : 0;
+    NvU32 tile;
+    NvU32 tileIndex = 0;
+    NvU32 tileStart = 0;
+
+    nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                 "z-trace: head %u %s tiles 0x%x (%u) hActive %u pclk %u dsc %u slices %u sliceWidth %u",
+                 head, (pTimings != NULL) ? "set" : "release",
+                 pConfig->tilesMask, numTiles, hActive,
+                 (pTimings != NULL) ? pTimings->pixelClock : 0,
+                 dsc ? (NvU32)pDscInfo->type : 0, sliceCount, sliceWidth);
+
+    for (NvU32 layer = 0; layer < pDevEvo->head[head].numLayers; layer++) {
+        const NvU32 mask = pConfig->phywinsMask[layer];
+        const NvBool bad = (pTimings != NULL) && (mask != 0) &&
+            (nvPopCount32(mask) != numTiles);
+
+        nvEvoLogDisp(pDispEvo, bad ? EVO_LOG_WARN : EVO_LOG_INFO,
+                     "z-trace: head %u layer %u phywins 0x%x (%u)%s",
+                     head, layer, mask, nvPopCount32(mask),
+                     bad ? " VIOLATION" : "");
+    }
+
+    if ((pTimings == NULL) || (numTiles == 0)) {
+        return;
+    }
+
+    if (dsc && (sliceCount < numTiles)) {
+        nvEvoLogDisp(pDispEvo, EVO_LOG_WARN,
+                     "z-trace: head %u VIOLATION %u DSC slices for %u tiles",
+                     head, sliceCount, numTiles);
+    }
+
+    FOR_EACH_INDEX_IN_MASK(32, tile, pConfig->tilesMask) {
+        const NvBool last = (tileIndex == (numTiles - 1));
+        const NvU32 width = !last ?
+            GetTileWidth(pTimings, pDscInfo, pConfig, tileIndex) :
+            ((tileStart < hActive) ? (hActive - tileStart) : 0);
+        const NvU32 slices = (sliceWidth != 0) ?
+            NV_UNSIGNED_DIV_CEIL(width, sliceWidth) : 0;
+        const NvBool bad = (width == 0) ||
+            ((tileStart + width) > hActive) ||
+            (slices > NV_EVO4_MAX_NUM_SLICES_PER_TILE) ||
+            (!last && (sliceWidth != 0) && ((width % sliceWidth) != 0));
+
+        nvEvoLogDisp(pDispEvo, bad ? EVO_LOG_WARN : EVO_LOG_INFO,
+                     "z-trace: head %u tile %u type %u start %u width %u slices %u%s",
+                     head, tile, (NvU32)pDevEvo->capabilities.hwTile[tile].type,
+                     tileStart, width, slices, bad ? " VIOLATION" : "");
+        tileStart += width;
+        tileIndex++;
+    } FOR_EACH_INDEX_IN_MASK_END;
+
+    if (tileStart != hActive) {
+        nvEvoLogDisp(pDispEvo, EVO_LOG_WARN,
+                     "z-trace: head %u VIOLATION tiles cover %u of %u pixels",
+                     head, tileStart, hActive);
+    }
+}
+
+/*
  * Physical window assignment changes need the same interlock handling as
  * logical window assignment changes in EvoInitWindowMapping3().
  */
@@ -2898,6 +3024,8 @@ static void EvoSetMultiTileConfigCA(const NVDispEvoRec *pDispEvo,
     NVEvoChannel *pCoreChannel = pDevEvo->core;
 
     nvUpdateUpdateState(pDevEvo, pUpdateState, pCoreChannel);
+
+    ZTraceMultiTileConfigCA(pDispEvo, head, pTimings, pDscInfo, pConfig);
 
     nvDmaSetStartEvoMethod(pCoreChannel, NVCA7D_HEAD_SET_TILE_MASK(head), 1);
     nvDmaSetEvoMethodData(pCoreChannel, pConfig->tilesMask);

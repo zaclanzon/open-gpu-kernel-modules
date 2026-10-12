@@ -118,3 +118,6 @@ static void CommitPendingMethods(void)
 {
     memcpy(stateCache, pendingMethods, sizeof(stateCache));
 }
+
+/* z-trace logging is a no-op in the models. */
+#define ZTraceMultiTileConfigCA(...) ((void)0)

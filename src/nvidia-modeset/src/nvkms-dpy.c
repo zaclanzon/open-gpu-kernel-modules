@@ -3013,6 +3013,12 @@ static void UpdateDpInfoFrames(const NVDispEvoRec *pDispEvo,
                                const NVDpyAttributeColor *pDpyColor,
                                const NVDispHeadInfoFrameStateEvoRec *pInfoFrame)
 {
+    nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                 "z-trace: head %u DP infoframes format %u bpc %u range %u colorimetry %u hdr %u",
+                 head, (NvU32)pDpyColor->format, (NvU32)pDpyColor->bpc,
+                 (NvU32)pDpyColor->range, (NvU32)pDpyColor->colorimetry,
+                 (NvU32)pDispEvo->headState[head].hdrInfoFrame.state);
+
     UpdateDpHDRInfoFrame(pDispEvo, head);
 
     UpdateDpVscSdpInfoFrame(pDispEvo, head, pDpyColor, pInfoFrame);

@@ -74,3 +74,6 @@ static void update(NVDevEvoRec *dev, const NVEvoUpdateState *u, NvBool release)
 #define nvRemoveUnusedHdmiDpAudioDevice(...) ((void)0)
 #define ApplyProposedModeSetStateOneApiHeadPostModesetUpdate(...) ((void)0)
 #define nvIsUpdateStateEmpty(...) TRUE
+
+/* z-trace logging is a no-op in the models. */
+#define ZTraceMultiTileConfigCA(...) ((void)0)
