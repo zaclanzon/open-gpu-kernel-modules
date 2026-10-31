@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Compare hardware-head assignment with the pinned upstream implementation.
 
-Runs the generic head assignment from nvkms-modeset.c against 615.71.09 over
-every mix of HDMI, DP, DP SST DSC, DP MST DSC and 2Heads1OR dpys on two to
-four heads, with uneven layer counts and heads already in use. Assignments
-must succeed exactly when stock succeeds, stay valid, and match stock unless
-stock put a DP SST DSC dpy on Blackwell hardware head 0.
+Runs AssignProposedHwHeadsOneDisp() from nvkms-modeset.c against 615.71.09
+over mixes of HDMI, DP, DP SST DSC, DP MST DSC, DP serializer and 2Heads1OR
+dpys on two to four heads, where each api-head is new, changed on a kept
+hardware head, or unchanged. Assignments must succeed exactly when stock
+succeeds, stay valid, never leave one api-head's hardware-head state on
+another's head, and match stock unless stock left a changed DP SST DSC dpy
+on Blackwell hardware head 0.
 """
 from pathlib import Path
 import re
@@ -24,17 +26,15 @@ def between(text, start, end):
     return text[first:text.index(end, first)]
 
 
-def assignment(text, first_helper):
-    return (between(text, first_helper, 'static\nNvBool AssignProposedHwHeadsForDPSerializer(') +
-            between(text, 'static NvU32 GetFree2Heads1ORHeadsMask(',
-                    'static void ClearHwHeadsMaskOneApiHead('))
+def assignment(text):
+    return between(text, 'static\nNvBool AssignProposedHwHeadsForDsiConnector(',
+                   '/*!\n * Assign the NVProposedModeSetHwState structure.')
 
 
-current = assignment((root / source_path).read_text(), 'static NvBool ApiHeadFitsHwHead(')
+current = assignment((root / source_path).read_text())
 reference = assignment(subprocess.check_output(
-    ['git', 'show', reference_revision + ':' + source_path], cwd=root, text=True),
-    'static NvBool HeadIsFree(')
-for name in re.findall(r'static\s+(?:NvBool|NvU32)\s+(\w+)\s*\(', reference):
+    ['git', 'show', reference_revision + ':' + source_path], cwd=root, text=True))
+for name in re.findall(r'static\s+(?:NvBool|NvU32|void)\s+(\w+)\s*\(', reference):
     reference = re.sub(r'\b' + re.escape(name) + r'\b', 'Reference' + name, reference)
 
 scenarios = (fixtures / 'hw-head-assignment.c').read_text()
