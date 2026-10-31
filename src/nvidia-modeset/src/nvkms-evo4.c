@@ -2740,6 +2740,49 @@ static void EvoSetHeadRefClkCA(NVDevEvoPtr pDevEvo, int head, NvBool external,
 }
 
 /*
+ * z-trace: dump every head's ARMed method values as nvkms finds them, before
+ * its first update. Methods nvkms never sends (HEAD_SET_DP_CTRL among them)
+ * keep whatever firmware or an earlier client armed.
+ */
+static void ZTraceArmedHeadStateCA(const NVDispEvoRec *pDispEvo,
+                                   const void *pCoreDma)
+{
+    const NVDevEvoRec *pDevEvo = pDispEvo->pDevEvo;
+    const NvU32 stride = NVCA7D_HEAD_SET_PROCAMP(1) - NVCA7D_HEAD_SET_PROCAMP(0);
+
+    for (NvU32 head = 0; head < pDevEvo->numHeads; head++) {
+        const NvU32 base = NVCA7D_HEAD_SET_PROCAMP(head);
+        char line[128];
+        NvU32 len = 0;
+
+        nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                     "z-trace: init head %u active %u dp_ctrl 0x%x dpm 0x%x",
+                     head, pDispEvo->headState[head].pConnectorEvo != NULL,
+                     nvDmaLoadPioMethod(pCoreDma, NVCA7D_HEAD_SET_DP_CTRL(head)),
+                     nvDmaLoadPioMethod(pCoreDma, NVCA7D_HEAD_SET_DPM_CONTROL(head)));
+
+        for (NvU32 offset = 0; offset < stride; offset += 4) {
+            const NvU32 value = nvDmaLoadPioMethod(pCoreDma, base + offset);
+
+            if (value == 0) {
+                continue;
+            }
+            len += nvkms_snprintf(line + len, sizeof(line) - len,
+                                  " %03x=%08x", offset, value);
+            if (len > sizeof(line) - 14) {
+                nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                             "z-trace: init head %u armed%s", head, line);
+                len = 0;
+            }
+        }
+        if (len != 0) {
+            nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                         "z-trace: init head %u armed%s", head, line);
+        }
+    }
+}
+
+/*
  * If the current owner head is active, the hardware does not allow to change
  * the tile/phywin ownership in a single update. NVKMS first needs to detach
  * the tile/phywin from its existing owner and then attach it to another owner
@@ -2756,6 +2799,8 @@ static void EvoInitHwHeadMultiTileConfigCA(NVDevEvoRec *pDevEvo)
 
     FOR_ALL_EVO_DISPLAYS(pDispEvo, sd, pDevEvo) {
         void *pCoreDma = pDevEvo->pSubDevices[sd]->pCoreDma;
+
+        ZTraceArmedHeadStateCA(pDispEvo, pCoreDma);
 
         for (NvU32 head = 0; head < pDevEvo->numHeads; head++) {
             NVDispHeadStateEvoRec *pHeadState = &pDispEvo->headState[head];
@@ -2901,6 +2946,18 @@ static void ZTraceMultiTileConfigCA(const NVDispEvoRec *pDispEvo,
                  pConfig->tilesMask, numTiles, hActive,
                  (pTimings != NULL) ? pTimings->pixelClock : 0,
                  dsc ? (NvU32)pDscInfo->type : 0, sliceCount, sliceWidth);
+
+    {
+        const void *pCoreDma =
+            pDevEvo->pSubDevices[pDispEvo->displayOwner]->pCoreDma;
+
+        nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                     "z-trace: head %u armed dp_ctrl 0x%x dpm 0x%x dsc_ctrl 0x%x",
+                     head,
+                     nvDmaLoadPioMethod(pCoreDma, NVCA7D_HEAD_SET_DP_CTRL(head)),
+                     nvDmaLoadPioMethod(pCoreDma, NVCA7D_HEAD_SET_DPM_CONTROL(head)),
+                     nvDmaLoadPioMethod(pCoreDma, NVCA7D_HEAD_SET_DSC_CONTROL(head)));
+    }
 
     for (NvU32 layer = 0; layer < pDevEvo->head[head].numLayers; layer++) {
         const NvU32 mask = pConfig->phywinsMask[layer];
