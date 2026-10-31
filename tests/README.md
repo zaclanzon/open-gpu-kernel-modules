@@ -21,11 +21,12 @@ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 python3 tests/phywin-s
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 python3 tests/window-ownership.py
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 python3 tests/phywin-stress.py
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 python3 tests/ordinary-configurations.py
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 python3 tests/hw-head-assignment.py
 ```
 
 The comparison requires base commit `61dcc93722ecb418bb5f2e00923f05b4b8051dd1` in the local Git object database.
 
-The `Modeset regressions` GitHub Actions workflow runs all five suites on PRs,
+The `Modeset regressions` GitHub Actions workflow runs all six suites on PRs,
 pushes to `main`, and manual dispatch. It fetches only the pinned comparison
 commit in addition to the checkout, so a shallow checkout works. CI uses the
 same sanitizer settings as the local runner and has a ten-minute job timeout.
@@ -35,6 +36,6 @@ commit `d6ce47a2296f2f900516d4dd7ad1d67e3a26ca4d` for fork PR #2. They now live
 alongside the production sources so changes to either can be reviewed and
 validated together.
 
-The Python runners extract production functions from the checkout and compile them between the C model headers and scenario files in `fixtures/`. The fixtures are parts of generated translation units, not independently built programs. Keeping the C in separate files makes its types, assertions, and method recording directly reviewable without embedding source in Python strings. The stress and comparison runners share `allocation-model.h`.
+The Python runners extract production functions from the checkout and compile them between the C model headers and scenario files in `fixtures/`. The fixtures are parts of generated translation units, not independently built programs. Keeping the C in separate files makes its types, assertions, and method recording directly reviewable without embedding source in Python strings. The stress and comparison runners share `allocation-model.h`. `hw-head-assignment.py` compiles the generic hardware-head assignment from `nvkms-modeset.c` next to the 615.71.09 version, with `hw-head-model.h` standing in for the DP library queries.
 
 These tests cover a simplified allocator and hardware-method model. They do not load a driver, change displays, run RM, or establish hardware timing and firmware behavior.
