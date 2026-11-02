@@ -486,6 +486,10 @@ namespace DisplayPort
             bool isCompliance;
         };
 
+        void readDeviceDscCaps(DeviceImpl * dev);
+
+        void refreshReturningDeviceCaps(DeviceImpl * dev);
+
         void processNewDevice(const ProcessNewDeviceParams &params);
 
         void applyEdidWARs(Edid &edid, DiscoveryManager::Device &device);
