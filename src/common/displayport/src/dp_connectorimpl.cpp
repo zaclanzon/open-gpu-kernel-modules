@@ -465,6 +465,67 @@ void ConnectorImpl::discoveryNewDevice(const DiscoveryManager::Device & device)
     }
 }
 
+//
+// Read a device's DSC caps and decide whether a DSC stream can be sent to it.
+//
+void ConnectorImpl::readDeviceDscCaps(DeviceImpl * dev)
+{
+    if (isInternalDpTunnelTbt3Downstream())
+    {
+        dev->resetDscAndFecCaps();
+        DP_PRINTF(DP_NOTICE, "DP> Skipping DSC/FEC probe for TBT3 downstream device (LTTPR count = 0)");
+        return;
+    }
+
+    bool bGpuDscSupported;
+
+    // Check GPU DSC Support
+    main->getDscCaps(&bGpuDscSupported);
+    if (!bGpuDscSupported)
+    {
+        return;
+    }
+
+    if (dev->getDSCSupport())
+    {
+        // Read and parse DSC caps only if panel supports DSC
+        dev->readAndParseDSCCaps();
+
+        // Read and Parse Branch Specific DSC Caps
+        if (!dev->isVideoSink() && !dev->isAudioSink())
+        {
+            dev->readAndParseBranchSpecificDSCCaps();
+        }
+    }
+
+    if (!dev->processedEdid.WARFlags.bIgnoreDscCap)
+    {
+        // Check if DSC is possible for the device and if so, set DSC Decompression device.
+        dev->setDscDecompressionDevice(this->bDscCapBasedOnParent);
+    }
+}
+
+//
+// A sink that was discovered before its DPCD was ready, as on wake, can have
+// DSC cached as unsupported, and a complete match keeps that device. Re-read
+// the DSC and FEC caps of a returning SST device without DSC support. Devices
+// with DSC keep their caps, so a bad read cannot affect an active DSC stream.
+//
+void ConnectorImpl::refreshReturningDeviceCaps(DeviceImpl * dev)
+{
+    if (dev->isMultistream() || dev->isDSCSupported() || linkAwaitingTransition)
+    {
+        return;
+    }
+
+    readDeviceDscCaps(dev);
+
+    if (!isInternalDpTunnelTbt3Downstream() && this->isFECSupported())
+    {
+        dev->getFECSupport();
+    }
+}
+
 void ConnectorImpl::processNewDevice(const ProcessNewDeviceParams &params)
 {
     const DiscoveryManager::Device &device = params.device;
@@ -594,6 +655,7 @@ void ConnectorImpl::processNewDevice(const ProcessNewDeviceParams &params)
 
     // Complete match, make sure its marked as plugged
     existingDev->plugged = true;
+    refreshReturningDeviceCaps(existingDev);
     if (existingDev->isActive())
         existingDev->activeGroup->update(existingDev, true);
 
@@ -807,38 +869,7 @@ create:
         // Following this assesslink calls fireEvents() which will report
         // the new devies to clients and client will have the correct DSC caps.
         //
-        if (isInternalDpTunnelTbt3Downstream())
-        {
-            newDev->resetDscAndFecCaps();
-            DP_PRINTF(DP_NOTICE, "DP> Skipping DSC/FEC probe for TBT3 downstream device (LTTPR count = 0)");
-        }
-        else
-        {
-            bool bGpuDscSupported;
-
-            // Check GPU DSC Support
-            main->getDscCaps(&bGpuDscSupported);
-            if (bGpuDscSupported)
-            {
-                if (newDev->getDSCSupport())
-                {
-                    // Read and parse DSC caps only if panel supports DSC
-                    newDev->readAndParseDSCCaps();
-
-                    // Read and Parse Branch Specific DSC Caps
-                    if (!newDev->isVideoSink() && !newDev->isAudioSink())
-                    {
-                        newDev->readAndParseBranchSpecificDSCCaps();
-                    }
-                }
-
-                if (!processedEdid.WARFlags.bIgnoreDscCap)
-                {
-                    // Check if DSC is possible for the device and if so, set DSC Decompression device.
-                    newDev->setDscDecompressionDevice(this->bDscCapBasedOnParent);
-                }
-            }
-        }
+        readDeviceDscCaps(newDev);
     }
 
     if (newDev->peerDevice == Dongle)
