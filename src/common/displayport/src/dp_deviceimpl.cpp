@@ -1770,6 +1770,9 @@ bool DeviceImpl::isVrrDriverEnabled()
     return ret;
 }
 
+#define DSC_SUPPORT_READ_RETRIES        2
+#define DSC_SUPPORT_READ_RETRY_DELAY_MS 50
+
 NvBool DeviceImpl::getDSCSupport()
 {
     NvU8 byte          = 0;
@@ -1780,22 +1783,36 @@ NvBool DeviceImpl::getDSCSupport()
 
     dscCaps.bDSCSupported = false;
 
-    if(AuxBus::success == this->getDpcdData(NV_DPCD14_DSC_SUPPORT,
-        &byte, sizeof(byte), &size, &nakReason))
-    {
-        if (FLD_TEST_DRF(_DPCD14, _DSC_SUPPORT, _DECOMPRESSION, _YES, byte))
-        {
-            dscCaps.bDSCDecompressionSupported = true;
-        }
-        if (FLD_TEST_DRF(_DPCD20, _DSC_SUPPORT, _PASS_THROUGH, _YES, byte))
-        {
-            dscCaps.bDSCPassThroughSupported = true;
-        }
-    }
+    //
+    // A sink that is still waking can fail this read, and a failure here
+    // leaves DSC unsupported for the life of the device. Retry it unless the
+    // device has no reachable DPCD.
+    //
+    const bool bDpcdReachable = !isFakedMuxDevice() &&
+                                !((peerDevice == Dongle) && (dpcdRevisionMajor == 0));
 
-    else
+    for (unsigned attempt = 0; ; attempt++)
     {
-        DP_PRINTF(DP_ERROR, "DP-DEV> DSC Support AUX READ failed for %s!", address.toString(sb));
+        if (AuxBus::success == this->getDpcdData(NV_DPCD14_DSC_SUPPORT,
+            &byte, sizeof(byte), &size, &nakReason))
+        {
+            if (FLD_TEST_DRF(_DPCD14, _DSC_SUPPORT, _DECOMPRESSION, _YES, byte))
+            {
+                dscCaps.bDSCDecompressionSupported = true;
+            }
+            if (FLD_TEST_DRF(_DPCD20, _DSC_SUPPORT, _PASS_THROUGH, _YES, byte))
+            {
+                dscCaps.bDSCPassThroughSupported = true;
+            }
+            break;
+        }
+
+        if (!bDpcdReachable || (attempt == DSC_SUPPORT_READ_RETRIES))
+        {
+            DP_PRINTF(DP_ERROR, "DP-DEV> DSC Support AUX READ failed for %s!", address.toString(sb));
+            break;
+        }
+        connector->timer->sleep(DSC_SUPPORT_READ_RETRY_DELAY_MS);
     }
 
     if (dscCaps.bDSCDecompressionSupported || dscCaps.bDSCPassThroughSupported)
