@@ -506,12 +506,10 @@ void ConnectorImpl::readDeviceDscCaps(DeviceImpl * dev)
 }
 
 //
-// A sink that returns before its DPCD is ready, as on wake, can leave its DSC
-// caps read as unsupported. A complete match keeps the existing device, so
-// that stale read would hide DSC modes, across monitor power cycles, until the
-// device is recreated. Re-read the caps of a returning SST device that has no
-// DSC support; a device that has it keeps its caps, so a flaky read never
-// takes DSC away from an active stream.
+// A sink that was discovered before its DPCD was ready, as on wake, can have
+// DSC cached as unsupported, and a complete match keeps that device. Re-read
+// the DSC and FEC caps of a returning SST device without DSC support. Devices
+// with DSC keep their caps, so a bad read cannot affect an active DSC stream.
 //
 void ConnectorImpl::refreshReturningDeviceCaps(DeviceImpl * dev)
 {

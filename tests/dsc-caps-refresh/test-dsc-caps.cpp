@@ -15,19 +15,11 @@ template <typename... Args>
 static void testPrint(unsigned int, const char *, Args...) {}
 #define DP_PRINTF testPrint
 
-enum { NakUndefined, NakBadParam };
-enum PeerDevice { None, Dongle };
+enum { NakUndefined };
 
 struct AuxBus
 {
     enum status { success, nack, defer };
-};
-
-struct Timer
-{
-    unsigned int sleeps = 0;
-    unsigned int sleptMs = 0;
-    void sleep(unsigned int ms) { sleeps++; sleptMs += ms; }
 };
 
 struct Address
@@ -47,12 +39,8 @@ struct ConnectorImpl;
 
 struct DeviceImpl
 {
-    ConnectorImpl *connector = nullptr;
     Address address;
     DscCaps dscCaps = {};
-    PeerDevice peerDevice = None;
-    unsigned int dpcdRevisionMajor = 1;
-    bool fakedMux = false;
     bool multistream = false;
     bool videoSink = true;
     bool audioSink = false;
@@ -88,7 +76,6 @@ struct DeviceImpl
         return AuxBus::success;
     }
 
-    bool isFakedMuxDevice() const { return fakedMux; }
     NvBool getDSCSupport();
     bool readAndParseDSCCaps() { capsParses++; return true; }
     void readAndParseBranchSpecificDSCCaps() { branchParses++; }
@@ -120,7 +107,6 @@ struct MainLink
 
 struct ConnectorImpl
 {
-    Timer *timer = nullptr;
     MainLink *main = nullptr;
     bool bDscCapBasedOnParent = false;
     bool linkAwaitingTransition = false;
@@ -137,17 +123,11 @@ struct ConnectorImpl
 
 struct Fixture
 {
-    Timer timer;
     MainLink main;
     ConnectorImpl connector;
     DeviceImpl device;
 
-    Fixture()
-    {
-        connector.timer = &timer;
-        connector.main = &main;
-        device.connector = &connector;
-    }
+    Fixture() { connector.main = &main; }
 };
 
 static void run(const char *name, void (*test)())
@@ -158,44 +138,24 @@ static void run(const char *name, void (*test)())
 
 int main()
 {
-    run("a failed read is retried", [] {
-        Fixture f;
-        f.device.dscSupportReads = {-1, 0x01};
-        assert(f.device.getDSCSupport());
-        assert(f.device.dpcdReads == 2);
-        assert(f.timer.sleeps == 1 && f.timer.sleptMs == DSC_SUPPORT_READ_RETRY_DELAY_MS);
-    });
-
-    run("persistent failures stop after the retry budget", [] {
-        Fixture f;
-        assert(!f.device.getDSCSupport());
-        assert(f.device.dpcdReads == DSC_SUPPORT_READ_RETRIES + 1);
-        assert(f.timer.sleeps == DSC_SUPPORT_READ_RETRIES);
-    });
-
-    run("devices without reachable DPCD are not retried", [] {
-        Fixture mux;
-        mux.device.fakedMux = true;
-        assert(!mux.device.getDSCSupport());
-        assert(mux.device.dpcdReads == 1 && mux.timer.sleeps == 0);
-
-        Fixture dongle;
-        dongle.device.peerDevice = Dongle;
-        dongle.device.dpcdRevisionMajor = 0;
-        assert(!dongle.device.getDSCSupport());
-        assert(dongle.device.dpcdReads == 1 && dongle.timer.sleeps == 0);
-    });
-
-    run("a successful read is not retried", [] {
-        Fixture none;
-        none.device.dscSupportReads = {0x00};
-        assert(!none.device.getDSCSupport());
-        assert(none.device.dpcdReads == 1 && none.timer.sleeps == 0);
+    run("DSC_SUPPORT decoding", [] {
+        Fixture decompression;
+        decompression.device.dscSupportReads = {0x01};
+        assert(decompression.device.getDSCSupport());
+        assert(decompression.device.dscCaps.bDSCDecompressionSupported);
 
         Fixture passThrough;
         passThrough.device.dscSupportReads = {0x02};
         assert(passThrough.device.getDSCSupport());
         assert(passThrough.device.dscCaps.bDSCPassThroughSupported);
+
+        Fixture none;
+        none.device.dscSupportReads = {0x00};
+        assert(!none.device.getDSCSupport());
+
+        Fixture failed;
+        assert(!failed.device.getDSCSupport());
+        assert(failed.device.dpcdReads == 1);
     });
 
     run("reading caps parses and decides DSC", [] {
@@ -231,16 +191,20 @@ int main()
     });
 
     run("a returning SST sink with stale caps regains DSC", [] {
-        Fixture f;
-        /* Discovery while the sink is still waking: every read fails. */
-        f.connector.readDeviceDscCaps(&f.device);
-        assert(!f.device.isDSCSupported() && !f.device.bDSCPossible);
+        /* Discovery while the sink is still waking: the read fails, or reads 0. */
+        for (const int discoveryRead : {-1, 0x00})
+        {
+            Fixture f;
+            f.device.dscSupportReads = {discoveryRead};
+            f.connector.readDeviceDscCaps(&f.device);
+            assert(!f.device.isDSCSupported() && !f.device.bDSCPossible);
 
-        /* The same sink returns with an identical EDID (complete match). */
-        f.device.dscSupportReads = {0x01};
-        f.connector.refreshReturningDeviceCaps(&f.device);
-        assert(f.device.isDSCSupported() && f.device.bDSCPossible);
-        assert(f.device.fecReads == 1);
+            /* The same sink returns with an identical EDID (complete match). */
+            f.device.dscSupportReads = {0x01};
+            f.connector.refreshReturningDeviceCaps(&f.device);
+            assert(f.device.isDSCSupported() && f.device.bDSCPossible);
+            assert(f.device.fecReads == 1);
+        }
     });
 
     run("returning devices that must keep their caps", [] {

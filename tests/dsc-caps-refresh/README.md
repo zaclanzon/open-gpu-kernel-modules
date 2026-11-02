@@ -9,9 +9,8 @@ with an identical EDID is a complete match and keeps its cached caps. Removing
 AC power did, because the compositor dropped the monitor and the device was
 recreated.
 
-The fix retries a failed DSC_SUPPORT read, and re-reads the DSC and FEC caps of
-a returning SST device whose cached caps say it has no DSC. A device that has
-DSC keeps its caps.
+The fix re-reads the DSC and FEC caps of a returning SST device whose cached
+caps say it has no DSC. A device that has DSC keeps its caps.
 
 ## Run the regression tests
 
@@ -21,11 +20,10 @@ Run from the repository root with Python 3 and a C++17 compiler:
 python3 tests/dsc-caps-refresh/run.py
 ```
 
-The runner extracts `DeviceImpl::getDSCSupport`, its two retry defines,
+The runner extracts `DeviceImpl::getDSCSupport`,
 `ConnectorImpl::readDeviceDscCaps` and `ConnectorImpl::refreshReturningDeviceCaps`,
 and reuses the extraction helpers of `tests/sst-dsc-restore/run.py`. NVIDIA's
 `nvmisc.h` field macros and DPCD headers decode the scripted DSC_SUPPORT bytes.
-Test doubles cover retry on failure, the retry budget, devices without reachable
-DPCD, successful reads, branch and pass-through caps, GPU, TBT3 and EDID override
-paths, a stale sink regaining DSC on return, and returning devices that must keep
-their caps. AddressSanitizer and UndefinedBehaviorSanitizer are enabled.
+Test doubles cover DSC_SUPPORT decoding, branch caps, the GPU, TBT3 and EDID
+override paths, a sink whose discovery read failed or read 0 regaining DSC on
+return, and returning devices that must keep their caps. AddressSanitizer and UndefinedBehaviorSanitizer are enabled.

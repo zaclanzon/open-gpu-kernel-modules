@@ -4,7 +4,6 @@
 import importlib.util
 import os
 from pathlib import Path
-import re
 import tempfile
 
 TEST_DIR = Path(__file__).resolve().parent
@@ -27,14 +26,9 @@ def dsc_caps_test_source():
 
     before, after = text.split(marker)
     after_line = text.count("\n", 0, text.index(marker) + len(marker)) + 1
-    device_source = DP_SOURCE / "dp_deviceimpl.cpp"
-    defines = re.findall(r"^#define DSC_SUPPORT_READ_\w+ .*$", device_source.read_text(), re.MULTILINE)
-    if len(defines) != 2:
-        raise ValueError(f"{device_source}: expected the two DSC_SUPPORT_READ_ retry defines")
     return "\n".join([
         _restore.source_fragment(path, before),
-        *defines,
-        _restore.read_function(device_source, "NvBool DeviceImpl::getDSCSupport("),
+        _restore.read_function(DP_SOURCE / "dp_deviceimpl.cpp", "NvBool DeviceImpl::getDSCSupport("),
         _restore.read_function(DP_SOURCE / "dp_connectorimpl.cpp", "void ConnectorImpl::readDeviceDscCaps("),
         _restore.read_function(DP_SOURCE / "dp_connectorimpl.cpp",
                                "void ConnectorImpl::refreshReturningDeviceCaps("),
