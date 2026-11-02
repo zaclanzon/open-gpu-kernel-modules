@@ -28,5 +28,9 @@ jobs:
           persist-credentials: false
       - name: Fetch pinned upstream comparison
         run: git fetch --no-tags --depth=1 origin 61dcc93722ecb418bb5f2e00923f05b4b8051dd1
-      - name: Run all five suites with ASan and UBSan
+      - name: Run the modeset suites with ASan and UBSan
         run: bash tests/run.sh
+      - name: Run the DisplayPort library suites with ASan and UBSan
+        run: |
+          python3 tests/sst-dsc-restore/run.py
+          python3 tests/dsc-caps-refresh/run.py
