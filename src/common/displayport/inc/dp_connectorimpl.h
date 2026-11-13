@@ -709,6 +709,7 @@ namespace DisplayPort
         bool isLinkInD3();
         bool isLinkActive();
         bool isLinkLost();
+        bool isActiveSstLinkStillTrained();
         bool trainSingleHeadMultipleSSTLinkNotAlive(GroupImpl *pGroupAttached);
         bool isLinkAwaitingTransition();
         bool isNoActiveStreamAndPowerdown();
