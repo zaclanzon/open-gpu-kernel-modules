@@ -130,8 +130,14 @@ void nvDPNotifyLongPulse(NVConnectorEvoPtr pConnectorEvo,
         // DPLib takes care of skipping LT on unassigned SOR Display. 
     }
 
+    const NvU64 startUsec = nvkms_get_usec();
+
     c->notifyLongPulse(connected);
 
+    nvEvoLogDisp(pConnectorEvo->pDispEvo, EVO_LOG_INFO,
+                 "z-trace: DP long pulse display 0x%x connected %u took %u ms",
+                 nvDpyIdToNvU32(pConnectorEvo->displayId), (NvU32)connected,
+                 (NvU32)((nvkms_get_usec() - startUsec) / 1000));
 }
 
 void nvDPNotifyShortPulse(NVDPLibConnectorPtr pNVDpLibConnector)

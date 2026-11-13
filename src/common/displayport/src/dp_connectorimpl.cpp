@@ -5960,6 +5960,39 @@ bool ConnectorImpl::isLinkInD3()
     return (hal->getPowerState() == PowerStateD3);
 }
 
+//
+// True when an SST sink still holds the link that an attached head drives.
+//
+// A sink can pulse HPD without losing its link, as the Samsung G9 does after
+// waking. Assessing the link then puts the active head in flush mode and
+// retrains it. On GB20x the flush entry and the training each took about 30 s
+// in GSP (2026-11-13), with the nvkms and RM API locks held throughout. The
+// last assessment still describes a link that never went down, so the caller
+// can keep it. The link status is read from the sink here, not from the cache.
+//
+bool ConnectorImpl::isActiveSstLinkStillTrained()
+{
+    if (linkUseMultistream() || linkAwaitingTransition || isLinkQuiesced)
+    {
+        return false;
+    }
+
+    GroupImpl * group = getActiveGroupForSST();
+    if (!group || !group->isHeadAttached() || group->headInFirmware)
+    {
+        return false;
+    }
+
+    if (!isLinkActive() || hal->isDpcdOffline() ||
+        hal->getPowerState() != PowerStateD0)
+    {
+        return false;
+    }
+
+    hal->setDirtyLinkStatus(true);
+    return !isLinkLost();
+}
+
 bool ConnectorImpl::trainLinkOptimizedSingleHeadMultipleSST(GroupImpl *pGroupAttached)
 {
     if (!pGroupAttached)
@@ -8460,7 +8493,15 @@ void ConnectorImpl::notifyLongPulseInternal(bool statusConnected)
                     //
                     hal->setPowerState(PowerStateD0);
                 }
-                this->assessLink();
+
+                if (isActiveSstLinkStillTrained())
+                {
+                    DP_PRINTF(DP_NOTICE, "DP-CONN> Link still trained with a head attached, keeping the last assessment");
+                }
+                else
+                {
+                    this->assessLink();
+                }
             }
 
             if (hal->getLegacyPortCount() != 0)

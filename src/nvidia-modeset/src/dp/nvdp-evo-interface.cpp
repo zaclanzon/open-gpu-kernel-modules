@@ -31,6 +31,8 @@
 
 #include "nvdp-connector-event-sink.hpp"
 
+#include <ctrl/ctrlc370/ctrlc370or.h>
+
 namespace nvkmsDisplayPort {
 
 EvoInterface::EvoInterface(NVConnectorEvoPtr pConnectorEvo)
@@ -38,28 +40,46 @@ EvoInterface::EvoInterface(NVConnectorEvoPtr pConnectorEvo)
 {
 }
 
+//
+// z-trace: the DP library calls RM with the nvkms lock held, and RM holds its
+// API lock until GSP answers. Log every call that is slow enough to stall the
+// desktop, and every flush mode change, with its status.
+//
+static NvU32 TimedRmControl(const NVDispEvoRec *pDispEvo, NvU32 hObject,
+                            NvU32 command, void *params, NvU32 paramSize)
+{
+    const NvU64 slowUsec = 100000;
+    const NvU64 startUsec = nvkms_get_usec();
+    const NvU32 status = nvRmApiControl(nvEvoGlobal.clientHandle, hObject,
+                                        command, params, paramSize);
+    const NvU64 usec = nvkms_get_usec() - startUsec;
+
+    if (usec >= slowUsec || command == NVC370_CTRL_CMD_SET_SOR_FLUSH_MODE ||
+        command == NV5070_CTRL_CMD_SET_SOR_FLUSH_MODE) {
+        nvEvoLogDisp(pDispEvo, EVO_LOG_INFO,
+                     "z-trace: DP rm control 0x%08x took %u ms status 0x%x",
+                     command, (NvU32)(usec / 1000), status);
+    }
+
+    return status;
+}
+
 NvU32 EvoInterface::rmControl0073(NvU32 command, void * params,
                                   NvU32 paramSize)
 {
-    NVDevEvoPtr pDevEvo = pConnectorEvo->pDispEvo->pDevEvo;
+    const NVDispEvoRec *pDispEvo = pConnectorEvo->pDispEvo;
 
-    return nvRmApiControl(nvEvoGlobal.clientHandle,
-                          pDevEvo->displayCommonHandle,
-                          command,
-                          params,
-                          paramSize);
+    return TimedRmControl(pDispEvo, pDispEvo->pDevEvo->displayCommonHandle,
+                          command, params, paramSize);
 }
 
 NvU32 EvoInterface::rmControl5070(NvU32 command, void * params,
                                   NvU32 paramSize)
 {
-    NVDevEvoPtr pDevEvo = pConnectorEvo->pDispEvo->pDevEvo;
+    const NVDispEvoRec *pDispEvo = pConnectorEvo->pDispEvo;
 
-    return nvRmApiControl(nvEvoGlobal.clientHandle,
-                          pDevEvo->displayHandle,
-                          command,
-                          params,
-                          paramSize);
+    return TimedRmControl(pDispEvo, pDispEvo->pDevEvo->displayHandle,
+                          command, params, paramSize);
 }
 
 /*!
