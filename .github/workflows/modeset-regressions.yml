@@ -34,3 +34,4 @@ jobs:
         run: |
           python3 tests/sst-dsc-restore/run.py
           python3 tests/dsc-caps-refresh/run.py
+          python3 tests/hpd-trained-link/run.py
